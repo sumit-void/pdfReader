@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base App Palette -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- Accent Color (Bronze / Warm Gold) -->
+    <color name="accent_gold">#B0893E</color>
+    <color name="accent_gold_light">#D6C4A3</color>
+    
+    <!-- Sepia Theme (Paperback Cream) -->
+    <color name="sepia_window_bg">#E2D5BA</color>
+    <color name="sepia_page_bg">#F5ECD7</color>
+    <color name="sepia_text">#2C210F</color>
+    <color name="sepia_text_secondary">#705E44</color>
+    <color name="sepia_divider">#DFCEAC</color>
+    
+    <!-- Dark Charcoal Theme -->
+    <color name="dark_window_bg">#121212</color>
+    <color name="dark_page_bg">#1C1C1E</color>
+    <color name="dark_text">#E5DFD3</color>
+    <color name="dark_text_secondary">#8C8578</color>
+    <color name="dark_divider">#2A2A2E</color>
+
+    <!-- Light Theme -->
+    <color name="light_window_bg">#F0F0F0</color>
+    <color name="light_page_bg">#FFFFFF</color>
+    <color name="light_text">#1A1A1A</color>
+    <color name="light_text_secondary">#757575</color>
+    <color name="light_divider">#E0E0E0</color>
+</resources>
