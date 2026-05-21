@@ -1,41 +1,8 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Theme.Paperback" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/accent_gold</item>
-        <item name="colorPrimaryVariant">@color/accent_gold</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/accent_gold_light</item>
-        <item name="colorSecondaryVariant">@color/accent_gold</item>
-        <item name="colorOnSecondary">@color/sepia_text</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
-        <item name="android:windowBackground">@color/sepia_window_bg</item>
-        
-        <!-- Bottom Sheet Theme -->
-        <item name="bottomSheetDialogTheme">@style/Theme.Paperback.BottomSheetDialog</item>
-    </style>
-
-    <!-- Custom Bottom Sheet Dialog Style -->
-    <style name="Theme.Paperback.BottomSheetDialog" parent="Theme.Design.Light.BottomSheetDialog">
-        <item name="bottomSheetStyle">@style/BottomSheetStyle</item>
-    </style>
-
-    <style name="BottomSheetStyle" parent="Widget.Design.BottomSheet.Modal">
-        <item name="android:background">@android:color/transparent</item>
-    </style>
-
-    <!-- Custom Text Appearances -->
-    <style name="LibraryToolbarTitle" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
-        <item name="android:fontFamily">serif</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textSize">20sp</item>
-    </style>
-    
-    <style name="ReaderToolbarTitle" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
-        <item name="android:fontFamily">serif</item>
-        <item name="android:textSize">16sp</item>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Paperback" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:windowBackground">@color/background_light</item>
     </style>
 </resources>

@@ -1,7 +1,11 @@
+import java.util.Properties
+
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -16,11 +20,21 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Load local.properties for API Key
+        val properties = Properties()
+        val propertiesFile = project.rootProject.file("local.properties")
+        if (propertiesFile.exists()) {
+            propertiesFile.inputStream().use { properties.load(it) }
+        }
+        val geminiApiKey = properties.getProperty("gemini.api.key") ?: ""
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -29,16 +43,17 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "21"
+        jvmTarget = "17"
     }
 
     buildFeatures {
-        viewBinding = true
+        compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -54,34 +69,80 @@ android {
 }
 
 dependencies {
-    // UI and Core AndroidX
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.viewpager2:viewpager2:1.1.0")
-    implementation("androidx.fragment:fragment-ktx:1.6.2")
+    // Compose BOM
+    val composeBom = platform(libs.compose.bom)
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
 
-    // Lifecycle components (ViewModel and LiveData)
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    // Compose
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons)
+    implementation(libs.compose.animation)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.runtime)
+    debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.compose.ui.test.manifest)
 
-    // Room Database
-    val roomVersion = "2.6.1"
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")
+    // Core
+    implementation(libs.core.ktx)
+    implementation(libs.core.splashscreen)
+    implementation(libs.activity.compose)
 
-    // Kotlin Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    // Lifecycle
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
 
-    // PDFBox Android (for text extraction and search)
-    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    // Navigation
+    implementation(libs.navigation.compose)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
+
+    // Room
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+    // DataStore
+    implementation(libs.datastore.preferences)
+
+    // Coroutines
+    implementation(libs.coroutines.core)
+    implementation(libs.coroutines.android)
+
+    // Image Loading
+    implementation(libs.coil.compose)
+
+    // Logging
+    implementation(libs.timber)
+
+    // Lottie
+    implementation(libs.lottie.compose)
+
+    // PDF
+    implementation(libs.pdfbox.android)
+
+    // Glance Widget
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
+
+    // Gemini AI
+    implementation(libs.google.generativeai)
+
+    // Media Session (for TTS Service controls)
+    implementation(libs.androidx.media)
 
     // Testing
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.coroutines.test)
+    testImplementation(libs.turbine)
+    androidTestImplementation(libs.junit.ext)
+    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.compose.ui.test)
 }

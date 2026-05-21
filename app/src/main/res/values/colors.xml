@@ -1,31 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base App Palette -->
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    
-    <!-- Accent Color (Bronze / Warm Gold) -->
-    <color name="accent_gold">#B0893E</color>
-    <color name="accent_gold_light">#D6C4A3</color>
-    
-    <!-- Sepia Theme (Paperback Cream) -->
-    <color name="sepia_window_bg">#E2D5BA</color>
-    <color name="sepia_page_bg">#F5ECD7</color>
-    <color name="sepia_text">#2C210F</color>
-    <color name="sepia_text_secondary">#705E44</color>
-    <color name="sepia_divider">#DFCEAC</color>
-    
-    <!-- Dark Charcoal Theme -->
-    <color name="dark_window_bg">#121212</color>
-    <color name="dark_page_bg">#1C1C1E</color>
-    <color name="dark_text">#E5DFD3</color>
-    <color name="dark_text_secondary">#8C8578</color>
-    <color name="dark_divider">#2A2A2E</color>
+    <!-- Primary brand colors -->
+    <color name="primary">#FF6B4E3D</color>
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="primary_container">#FFDEB8A0</color>
+    <color name="on_primary_container">#FF3B2A1A</color>
 
-    <!-- Light Theme -->
-    <color name="light_window_bg">#F0F0F0</color>
-    <color name="light_page_bg">#FFFFFF</color>
-    <color name="light_text">#1A1A1A</color>
-    <color name="light_text_secondary">#757575</color>
-    <color name="light_divider">#E0E0E0</color>
+    <!-- Secondary colors -->
+    <color name="secondary">#FF8B6F5E</color>
+    <color name="on_secondary">#FFFFFFFF</color>
+    <color name="secondary_container">#FFE8D5C4</color>
+    <color name="on_secondary_container">#FF4A3728</color>
+
+    <!-- Tertiary colors -->
+    <color name="tertiary">#FF7D8B6A</color>
+    <color name="on_tertiary">#FFFFFFFF</color>
+    <color name="tertiary_container">#FFDCE8C8</color>
+    <color name="on_tertiary_container">#FF3A4530</color>
+
+    <!-- Background & Surface -->
+    <color name="background_light">#FFFAF6F1</color>
+    <color name="on_background_light">#FF1E1B16</color>
+    <color name="surface_light">#FFFAF6F1</color>
+    <color name="on_surface_light">#FF1E1B16</color>
+    <color name="surface_variant_light">#FFF0E6D8</color>
+    <color name="on_surface_variant_light">#FF4F4539</color>
+
+    <!-- Dark theme -->
+    <color name="background_dark">#FF121212</color>
+    <color name="on_background_dark">#FFE8E0D0</color>
+    <color name="surface_dark">#FF1E1E1E</color>
+    <color name="on_surface_dark">#FFE8E0D0</color>
+    <color name="surface_variant_dark">#FF4F4539</color>
+    <color name="on_surface_variant_dark">#FFD3C5B4</color>
+
+    <!-- Sepia theme -->
+    <color name="background_sepia">#FFF5ECD7</color>
+    <color name="on_background_sepia">#FF3B2A1A</color>
+    <color name="surface_sepia">#FFF0E5D0</color>
+    <color name="on_surface_sepia">#FF3B2A1A</color>
+
+    <!-- AMOLED theme -->
+    <color name="background_amoled">#FF000000</color>
+    <color name="on_background_amoled">#FFE0D8C8</color>
+    <color name="surface_amoled">#FF0A0A0A</color>
+    <color name="on_surface_amoled">#FFE0D8C8</color>
+
+    <!-- Highlight colors -->
+    <color name="highlight_yellow">#80FFEB3B</color>
+    <color name="highlight_green">#8066BB6A</color>
+    <color name="highlight_pink">#80F48FB1</color>
+
+    <!-- Error -->
+    <color name="error">#FFB3261E</color>
+    <color name="on_error">#FFFFFFFF</color>
+
+    <!-- Outline -->
+    <color name="outline_light">#FF837568</color>
+    <color name="outline_dark">#FF9C8E80</color>
+
+    <!-- Splash screen -->
+    <color name="splash_background">#FF6B4E3D</color>
+    <color name="accent_gold">#FFE0A96D</color>
 </resources>
