@@ -17,4 +17,5 @@ interface BookRepository {
     suspend fun getBookCount(): Int
     suspend fun getTotalPagesRead(): Int
     suspend fun extractPageText(filePath: String, pageIndex: Int): String
+    suspend fun cleanupOrphanedFiles()
 }

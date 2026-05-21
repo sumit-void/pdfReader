@@ -139,6 +139,32 @@ enum class CardStyle(
         fontFamily = FontFamily.Serif,
         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
         showQuoteMark = true
+    ),
+    BLURRED_COVER(
+        displayName = "Glass",
+        background = {
+            Modifier.background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF6366F1), Color(0xFFA855F7), Color(0xFFEC4899))
+                )
+            )
+        },
+        textColor = Color.White,
+        metaColor = Color.White.copy(alpha = 0.7f),
+        fontFamily = FontFamily.SansSerif,
+        showQuoteMark = true
+    ),
+    ELEGANT_SERIF(
+        displayName = "Elegant",
+        background = {
+            Modifier.background(Color(0xFFFCF8F2))
+        },
+        textColor = Color(0xFF2C241E),
+        metaColor = Color(0xFF8C7A6B),
+        fontFamily = FontFamily.Serif,
+        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+        showQuoteMark = true,
+        useBorder = true
     )
 }
 
@@ -382,6 +408,14 @@ fun CardPreview(
             .padding(28.dp),
         contentAlignment = Alignment.Center
     ) {
+        if (style == CardStyle.BLURRED_COVER) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+            )
+        }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -493,6 +527,8 @@ fun StyleSelectorItem(
                             CardStyle.MINIMAL_LIGHT -> Modifier.background(Color.White).border(1.dp, Color(0xFFE5E7EB), CircleShape)
                             CardStyle.MIDNIGHT_DARK -> Modifier.background(Color(0xFF0F172A))
                             CardStyle.CLASSIC_SEPIA -> Modifier.background(Color(0xFFF4ECD8))
+                            CardStyle.BLURRED_COVER -> Modifier.background(Brush.linearGradient(colors = listOf(Color(0xFF6366F1), Color(0xFFA855F7), Color(0xFFEC4899))))
+                            CardStyle.ELEGANT_SERIF -> Modifier.background(Color(0xFFFCF8F2)).border(1.dp, Color(0xFFD1C7BD), CircleShape)
                         }
                     )
             )

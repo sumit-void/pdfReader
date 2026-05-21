@@ -148,6 +148,7 @@ fun SettingsScreen(
                                     AppTheme.DARK -> stringResource(R.string.settings_theme_dark)
                                     AppTheme.SEPIA -> stringResource(R.string.settings_theme_sepia)
                                     AppTheme.AMOLED -> stringResource(R.string.settings_theme_amoled)
+                                    AppTheme.E_INK -> stringResource(R.string.settings_theme_e_ink)
                                 },
                                 style = MaterialTheme.typography.bodyLarge
                             )

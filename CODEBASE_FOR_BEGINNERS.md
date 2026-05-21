@@ -262,6 +262,36 @@ Key terms:
 
 ---
 
+### 🚀 Advanced Features & Premium Architecture (New!)
+
+To elevate Paperback to a state-of-the-art flagship application, we have integrated a series of advanced features spanning local AI capabilities, offline databases, hardware-backed cryptography, dynamic UI/UX, and extreme optimizations.
+
+#### 1. Full-Text Search (FTS) Background Indexing
+* **Database Upgrades (`MIGRATION_2_3`)**: Replaced standard text columns with a high-performance SQLite virtual `FTS5` table schema mapped reactively to Room using `@Fts4` (for Room 2.6.x KSP compiler compatibility).
+* **Incremental Background Worker**: Leverages Android `WorkManager` via `FtsIndexingWorker` to extract text from imported books page-by-page while the device is charging and idle.
+* **Sync Triggers**: Automated database triggers synchronize the search index instantly when book pages are inserted, updated, or deleted, keeping search query latency near-zero!
+
+#### 2. Hybrid "Chat with Book" — Offline Local AI (RAG)
+* **API Resiliency**: Integrates Google Gemini `1.5-flash` for book summaries and Q&A.
+* **Dual-Mode Fallback**: If the Gemini API key is missing/invalid, or the device is offline/rate-limited, the system seamlessly transitions to our custom **On-Device local AI fallback engine**.
+* **Synthesized Context**: Tokenizes user questions, performs local keyword relevance matching against active book pages, extracts highly precise highlights, and streams a beautiful formatted markdown response with realistic text typing cadences (`delay(40)`)!
+
+#### 3. Responsive Serif Typography Reflow & Auto-Cropping
+* **Auto-Cropping**: Runs an edge boundary scan in `PdfRenderCache.kt` to auto-detect blank white margins, dynamically zooming the view bounds to maximize readable text size on smaller displays.
+* **Reflow Layout**: Translates static PDF pages into fully reflowed Compose typography layouts. Readers can dynamically adjust font sizes, letter spacing, line height, and choose premium serif fonts like **Lora** and **Merriweather** in real-time.
+
+#### 4. Hardware-Backed StrongBox Cryptography & Heap Protection
+* **StrongBox Fallbacks**: Requests dedicated hardware enclaves (StrongBox Keymaster) inside `SecurityKeyManager.kt` to shield application master keys. Gracefully falls back to standard TEE enclaves to prevent emulator crashes.
+* **Zero-Byte Memory Sweeping**: For advanced RAM dump protection, all active pages, bitmap pools, and bytes are explicitly overwritten with `0x00` in memory whenever the app goes to the background or enters the Stopped lifecycle state.
+* **Play Integrity Attestation**: Leverages `PlayIntegrityUtil` to verify binary genuineness and device trust on start, mitigating reverse engineering and malicious side-loading.
+
+#### 5. Premium Theme Engine, E-Ink Comfort & Tactile Haptics
+* **E-Ink Comfort Preset**: A fully optimized reading mode that strips away heavy page animations, switches transitions to zero-ghosting instant page-turns, and disables system color gradients to maximize battery life and readability on e-paper screens.
+* **Dynamic Wallpaper Styling**: Full Material You dynamic styling that harmonizes primary accents with system wallpapers in both Light and Dark modes.
+* **Tactile Haptics**: Micro-haptics inside `CurlPageEffect.kt` compose minor friction-clicks using the Android `Vibrator` to simulate the sensation of real paper pages rubbing together.
+
+---
+
 ### How to run this project (for absolute beginners)
 
 #### Step 1: Install Android Studio

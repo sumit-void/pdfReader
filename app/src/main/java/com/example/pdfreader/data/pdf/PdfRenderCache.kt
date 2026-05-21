@@ -17,7 +17,7 @@ import javax.inject.Singleton
 class PdfRenderCache @Inject constructor() {
 
     companion object {
-        private const val MAX_CACHE_SIZE = 10
+        private const val MAX_CACHE_SIZE = 20
         private const val RENDER_SCALE = 2
     }
 
@@ -112,6 +112,11 @@ class PdfRenderCache @Inject constructor() {
                                     (236 - 236 * factor).toInt().coerceIn(0, 255),
                                     (236 - 236 * factor).toInt().coerceIn(0, 255)
                                 )
+                                com.example.pdfreader.domain.model.AppTheme.E_INK -> {
+                                    val gray = (0.299f * r + 0.587f * g + 0.114f * b).toInt()
+                                    val finalGray = if (gray > 200) 255 else if (gray < 80) 0 else gray
+                                    Triple(finalGray, finalGray, finalGray)
+                                }
                                 else -> Triple(r, g, b)
                             }
                             pixels[i] = (a shl 24) or (newR shl 16) or (newG shl 8) or newB
@@ -127,6 +132,129 @@ class PdfRenderCache @Inject constructor() {
                 Timber.e(e, "Failed to render page $pageIndex")
                 null
             }
+        }
+    }
+
+    fun cropMarginOfBitmap(bitmap: Bitmap, theme: com.example.pdfreader.domain.model.AppTheme): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+
+        var left = 0
+        var top = 0
+        var right = width - 1
+        var bottom = height - 1
+
+        val threshold = 15 // Tolerance threshold
+
+        // Get corners / edge backgrounds to dynamically identify background color
+        val bgColor = bitmap.getPixel(0, 0)
+        val bgR = (bgColor shr 16) and 0xFF
+        val bgG = (bgColor shr 8) and 0xFF
+        val bgB = bgColor and 0xFF
+
+        fun isBackground(pixel: Int): Boolean {
+            val r = (pixel shr 16) and 0xFF
+            val g = (pixel shr 8) and 0xFF
+            val b = pixel and 0xFF
+            return kotlin.math.abs(r - bgR) < threshold &&
+                   kotlin.math.abs(g - bgG) < threshold &&
+                   kotlin.math.abs(b - bgB) < threshold
+        }
+
+        // Scan from top
+        for (y in 0 until height step 2) {
+            var foundContent = false
+            for (x in 0 until width step 4) {
+                if (!isBackground(bitmap.getPixel(x, y))) {
+                    foundContent = true
+                    break
+                }
+            }
+            if (foundContent) {
+                top = y
+                break
+            }
+        }
+
+        // Scan from bottom
+        for (y in (height - 1) downTo 0 step 2) {
+            var foundContent = false
+            for (x in 0 until width step 4) {
+                if (!isBackground(bitmap.getPixel(x, y))) {
+                    foundContent = true
+                    break
+                }
+            }
+            if (foundContent) {
+                bottom = y
+                break
+            }
+        }
+
+        // Scan from left
+        for (x in 0 until width step 2) {
+            var foundContent = false
+            for (y in top until bottom step 4) {
+                if (!isBackground(bitmap.getPixel(x, y))) {
+                    foundContent = true
+                    break
+                }
+            }
+            if (foundContent) {
+                left = x
+                break
+            }
+        }
+
+        // Scan from right
+        for (x in (width - 1) downTo 0 step 2) {
+            var foundContent = false
+            for (y in top until bottom step 4) {
+                if (!isBackground(bitmap.getPixel(x, y))) {
+                    foundContent = true
+                    break
+                }
+            }
+            if (foundContent) {
+                right = x
+                break
+            }
+        }
+
+        // Ensure we have a valid bounding box before cropping
+        val cropW = right - left
+        val cropH = bottom - top
+        if (cropW > width / 4 && cropH > height / 4) {
+            try {
+                return Bitmap.createBitmap(bitmap, left, top, cropW, cropH)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to crop bitmap margins")
+            }
+        }
+        return bitmap
+    }
+
+    suspend fun renderPageAutoCropped(pageIndex: Int, screenWidth: Int, theme: com.example.pdfreader.domain.model.AppTheme): Bitmap? {
+        val normalBmp = renderPage(pageIndex, screenWidth, theme) ?: return null
+        return withContext(Dispatchers.IO) {
+            cropMarginOfBitmap(normalBmp, theme)
+        }
+    }
+
+    fun purgeAllBitmaps() {
+        try {
+            val snapshot = memoryCache.snapshot()
+            for ((key, bitmap) in snapshot) {
+                if (bitmap != null && !bitmap.isRecycled) {
+                    bitmap.eraseColor(0)
+                    bitmap.recycle()
+                }
+            }
+            memoryCache.evictAll()
+            System.gc()
+            Timber.d("Secure memory purge successfully completed.")
+        } catch (e: Exception) {
+            Timber.e(e, "Error during secure memory purging")
         }
     }
 
@@ -148,10 +276,10 @@ class PdfRenderCache @Inject constructor() {
         currentRenderer = null
         currentPfd = null
         currentFilePath = ""
-        memoryCache.evictAll()
+        purgeAllBitmaps()
     }
 
     fun clearCache() {
-        memoryCache.evictAll()
+        purgeAllBitmaps()
     }
 }

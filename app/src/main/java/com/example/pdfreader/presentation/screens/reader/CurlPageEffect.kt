@@ -71,6 +71,8 @@ fun CurlPageEffect(
     val cameraDist = 12f * density
 
     val animProgress = remember { Animatable(0f) }
+    val hapticFeedback = androidx.compose.ui.platform.LocalHapticFeedback.current
+    var lastTickedInterval by remember { mutableStateOf(-1) }
 
     var currentBmp by remember(currentPage) { mutableStateOf<Bitmap?>(null) }
     var nextBmp by remember(currentPage) { mutableStateOf<Bitmap?>(null) }
@@ -100,6 +102,7 @@ fun CurlPageEffect(
                     onDragStart = {
                         isDragging = true
                         offsetX = 0f
+                        lastTickedInterval = -1
                         scope.launch { animProgress.snapTo(0f) }
                     },
                     onHorizontalDrag = { change, dragAmount ->
@@ -115,6 +118,12 @@ fun CurlPageEffect(
                                 dragDirection = 1
                                 scope.launch { animProgress.snapTo(-progress) }
                             }
+
+                            val currentInterval = (kotlin.math.abs(progress) * 10).toInt()
+                            if (currentInterval != lastTickedInterval) {
+                                hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                lastTickedInterval = currentInterval
+                            }
                         }
                     },
                     onDragEnd = {
@@ -122,9 +131,10 @@ fun CurlPageEffect(
                         val progress = animProgress.value
                         if (progress > 0.35f) {
                             scope.launch {
+                                hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                                 animProgress.animateTo(
                                     targetValue = 1f,
-                                    animationSpec = spring(stiffness = 200f)
+                                    animationSpec = spring(stiffness = if (theme == AppTheme.E_INK) 100000f else 200f)
                                 )
                                 if (dragDirection == -1) {
                                     onPageChanged(currentPage + 1)
@@ -139,7 +149,7 @@ fun CurlPageEffect(
                             scope.launch {
                                 animProgress.animateTo(
                                     targetValue = 0f,
-                                    animationSpec = spring(stiffness = 200f)
+                                    animationSpec = spring(stiffness = if (theme == AppTheme.E_INK) 100000f else 200f)
                                 )
                                 offsetX = 0f
                                 dragDirection = 0
@@ -149,7 +159,7 @@ fun CurlPageEffect(
                     onDragCancel = {
                         isDragging = false
                         scope.launch {
-                            animProgress.animateTo(0f)
+                            animProgress.animateTo(0f, animationSpec = spring(stiffness = if (theme == AppTheme.E_INK) 100000f else 200f))
                             offsetX = 0f
                             dragDirection = 0
                         }
@@ -322,6 +332,7 @@ fun ZoomablePage(
     onTap: () -> Unit,
     onLeftDoubleTap: () -> Unit = {},
     onRightDoubleTap: () -> Unit = {},
+    theme: AppTheme = AppTheme.LIGHT,
     modifier: Modifier = Modifier
 ) {
     var scale by remember(bitmap) { mutableFloatStateOf(zoomLevel) }
@@ -413,18 +424,20 @@ fun ZoomablePage(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit
                 )
-                // Subtle page-edge shadow on the right side (8dp wide, 0 -> 15% black alpha)
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(8.dp)
-                        .align(Alignment.CenterEnd)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.15f))
+                if (theme != AppTheme.E_INK) {
+                    // Subtle page-edge shadow on the right side (8dp wide, 0 -> 15% black alpha)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(8.dp)
+                            .align(Alignment.CenterEnd)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.15f))
+                                )
                             )
-                        )
-                )
+                    )
+                }
             }
         }
     }

@@ -61,6 +61,11 @@ object PageColorFilter {
                 matrix.postConcat(invertMatrix)
                 matrix
             }
+            AppTheme.E_INK -> {
+                ColorMatrix().apply {
+                    setSaturation(0f)
+                }
+            }
         }
     }
 
@@ -70,6 +75,7 @@ object PageColorFilter {
             AppTheme.SEPIA -> androidx.compose.ui.graphics.Color(0xFFF5ECD7).copy(alpha = 0.3f)
             AppTheme.DARK -> androidx.compose.ui.graphics.Color(0xFF1C1C1E).copy(alpha = 0.2f)
             AppTheme.AMOLED -> androidx.compose.ui.graphics.Color(0xFF000000).copy(alpha = 0.25f)
+            AppTheme.E_INK -> androidx.compose.ui.graphics.Color.Transparent
         }
     }
 }

@@ -58,11 +58,28 @@ fun PaperbackNavGraph(
 
         composable(
             route = Screen.Reader.route,
-            arguments = listOf(navArgument("bookId") { type = NavType.LongType }),
-            deepLinks = listOf(navDeepLink { uriPattern = "paperback://reader/{bookId}" })
+            arguments = listOf(
+                navArgument("bookId") { type = NavType.LongType },
+                navArgument("uri") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            ),
+            deepLinks = listOf(
+                navDeepLink { uriPattern = "paperback://reader/{bookId}" },
+                navDeepLink { uriPattern = "paperback://reader/{bookId}?uri={uri}" }
+            )
         ) {
             ReaderScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = {
+                    val popped = navController.popBackStack()
+                    if (!popped) {
+                        navController.navigate(Screen.Library.route) {
+                            popUpTo(Screen.Reader.route) { inclusive = true }
+                        }
+                    }
+                },
                 onNavigateToBookmarks = { bookId ->
                     navController.navigate(Screen.Bookmarks.createRoute(bookId))
                 },

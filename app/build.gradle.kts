@@ -141,6 +141,10 @@ dependencies {
     // Media Session (for TTS Service controls)
     implementation(libs.androidx.media)
 
+    // WorkManager & Play Integrity
+    implementation(libs.androidx.work)
+    implementation(libs.google.play.integrity)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

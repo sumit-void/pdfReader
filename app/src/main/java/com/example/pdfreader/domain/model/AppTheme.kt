@@ -1,7 +1,7 @@
 package com.example.pdfreader.domain.model
 
 enum class AppTheme {
-    LIGHT, DARK, SEPIA, AMOLED
+    LIGHT, DARK, SEPIA, AMOLED, E_INK
 }
 
 enum class PageTurnStyle {

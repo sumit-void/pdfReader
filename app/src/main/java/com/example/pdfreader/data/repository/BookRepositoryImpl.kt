@@ -15,17 +15,20 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.pdfreader.data.preferences.UserPreferences
 
 @Singleton
 class BookRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val bookDao: BookDao
+    private val bookDao: BookDao,
+    private val userPreferences: UserPreferences
 ) : BookRepository {
 
     init {
@@ -132,8 +135,46 @@ class BookRepositoryImpl @Inject constructor(
             if (entity.coverPath.isNotBlank()) File(entity.coverPath).delete()
             // Delete from DB
             bookDao.deleteBook(entity)
+
+            // Clear last opened book preference if it was this book
+            val lastOpenedId = userPreferences.lastOpenedBookId.first()
+            if (lastOpenedId == book.id) {
+                userPreferences.setLastOpenedBookId(-1L)
+            }
         } catch (e: Exception) {
             Timber.e(e, "Failed to delete book")
+        }
+    }
+
+    override suspend fun cleanupOrphanedFiles() = withContext(Dispatchers.IO) {
+        try {
+            val allBooks = bookDao.getAllBooks().first()
+            val dbBookPaths = allBooks.map { it.filePath }.toSet()
+            val dbCoverPaths = allBooks.map { it.coverPath }.filter { it.isNotBlank() }.toSet()
+
+            // Sweep books folder
+            val booksDir = File(context.filesDir, "books")
+            if (booksDir.exists() && booksDir.isDirectory) {
+                booksDir.listFiles()?.forEach { file ->
+                    if (!dbBookPaths.contains(file.absolutePath)) {
+                        file.delete()
+                        Timber.d("Cleaned up orphaned book: ${file.name}")
+                    }
+                }
+            }
+
+            // Sweep covers folder
+            val coversDir = File(context.filesDir, "covers")
+            if (coversDir.exists() && coversDir.isDirectory) {
+                coversDir.listFiles()?.forEach { file ->
+                    if (!dbCoverPaths.contains(file.absolutePath)) {
+                        file.delete()
+                        Timber.d("Cleaned up orphaned cover: ${file.name}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to clean up orphaned files")
         }
     }
 

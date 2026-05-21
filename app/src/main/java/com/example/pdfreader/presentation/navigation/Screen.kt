@@ -5,8 +5,15 @@ package com.example.pdfreader.presentation.navigation
  */
 sealed class Screen(val route: String) {
     data object Library : Screen("library")
-    data object Reader : Screen("reader/{bookId}") {
-        fun createRoute(bookId: Long): String = "reader/$bookId"
+    data object Reader : Screen("reader/{bookId}?uri={uri}") {
+        fun createRoute(bookId: Long, uri: String? = null): String {
+            return if (uri != null) {
+                val encodedUri = java.net.URLEncoder.encode(uri, "UTF-8")
+                "reader/$bookId?uri=$encodedUri"
+            } else {
+                "reader/$bookId"
+            }
+        }
     }
     data object Bookmarks : Screen("bookmarks/{bookId}") {
         fun createRoute(bookId: Long): String = "bookmarks/$bookId"

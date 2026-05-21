@@ -127,6 +127,28 @@ private val AmoledColorScheme = darkColorScheme(
     onErrorContainer = OnErrorContainerColor
 )
 
+private val EInkColorScheme = lightColorScheme(
+    primary = Color.Black,
+    onPrimary = Color.White,
+    primaryContainer = Color.White,
+    onPrimaryContainer = Color.Black,
+    secondary = Color.Black,
+    onSecondary = Color.White,
+    secondaryContainer = Color.White,
+    onSecondaryContainer = Color.Black,
+    background = Color.White,
+    onBackground = Color.Black,
+    surface = Color.White,
+    onSurface = Color.Black,
+    surfaceVariant = Color(0xFFE5E5E5),
+    onSurfaceVariant = Color.Black,
+    outline = Color.Black,
+    error = Color.Black,
+    onError = Color.White,
+    errorContainer = Color.White,
+    onErrorContainer = Color.Black
+)
+
 private object ScaleIndication : Indication {
     @Composable
     override fun rememberUpdatedInstance(interactionSource: InteractionSource): IndicationInstance {
@@ -162,18 +184,33 @@ private object ScaleIndication : Indication {
 
 /**
  * Main theme composable for the Paperback app.
- * Supports Light, Dark, Sepia, and AMOLED themes.
+ * Supports Light, Dark, Sepia, AMOLED, and E-Ink themes.
  */
 @Composable
 fun PaperbackTheme(
     appTheme: AppTheme = AppTheme.LIGHT,
+    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val colorScheme = when (appTheme) {
-        AppTheme.LIGHT -> LightColorScheme
-        AppTheme.DARK -> DarkColorScheme
+        AppTheme.LIGHT -> {
+            if (dynamicColor && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                androidx.compose.material3.dynamicLightColorScheme(context)
+            } else {
+                LightColorScheme
+            }
+        }
+        AppTheme.DARK -> {
+            if (dynamicColor && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                androidx.compose.material3.dynamicDarkColorScheme(context)
+            } else {
+                DarkColorScheme
+            }
+        }
         AppTheme.SEPIA -> SepiaColorScheme
         AppTheme.AMOLED -> AmoledColorScheme
+        AppTheme.E_INK -> EInkColorScheme
     }
 
     CompositionLocalProvider(

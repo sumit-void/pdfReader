@@ -24,9 +24,11 @@ import com.example.pdfreader.data.local.entity.GoalEntity
         HighlightEntity::class,
         ReadingSessionEntity::class,
         StreakEntity::class,
-        GoalEntity::class
+        GoalEntity::class,
+        com.example.pdfreader.data.local.entity.BookPageEntity::class,
+        com.example.pdfreader.data.local.entity.BookPageFtsEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class PaperbackDatabase : RoomDatabase() {
@@ -36,6 +38,7 @@ abstract class PaperbackDatabase : RoomDatabase() {
     abstract fun readingSessionDao(): ReadingSessionDao
     abstract fun streakDao(): StreakDao
     abstract fun goalDao(): GoalDao
+    abstract fun bookPageDao(): com.example.pdfreader.data.local.dao.BookPageDao
 
     companion object {
         const val DATABASE_NAME = "paperback_db"
@@ -60,6 +63,62 @@ abstract class PaperbackDatabase : RoomDatabase() {
                         `dailyTimeGoalMinutes` INTEGER NOT NULL, 
                         PRIMARY KEY(`id`)
                     )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `book_pages` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `bookId` INTEGER NOT NULL, 
+                        `pageIndex` INTEGER NOT NULL, 
+                        `pageText` TEXT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE VIRTUAL TABLE IF NOT EXISTS `book_pages_fts` USING fts5(
+                        `pageText`, 
+                        content=`book_pages`, 
+                        content_rowid=`id`
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_book_pages_fts_BEFORE_UPDATE 
+                    BEFORE UPDATE ON `book_pages` BEGIN 
+                        DELETE FROM `book_pages_fts` WHERE rowid = OLD.`id`; 
+                    END
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_book_pages_fts_BEFORE_DELETE 
+                    BEFORE DELETE ON `book_pages` BEGIN 
+                        DELETE FROM `book_pages_fts` WHERE rowid = OLD.`id`; 
+                    END
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_book_pages_fts_AFTER_UPDATE 
+                    AFTER UPDATE ON `book_pages` BEGIN 
+                        INSERT INTO `book_pages_fts`(rowid, `pageText`) VALUES (NEW.`id`, NEW.`pageText`); 
+                    END
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_book_pages_fts_AFTER_INSERT 
+                    AFTER INSERT ON `book_pages` BEGIN 
+                        INSERT INTO `book_pages_fts`(rowid, `pageText`) VALUES (NEW.`id`, NEW.`pageText`); 
+                    END
                     """.trimIndent()
                 )
             }

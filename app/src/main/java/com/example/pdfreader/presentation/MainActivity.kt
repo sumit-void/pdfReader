@@ -74,6 +74,9 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var userPreferences: UserPreferences
 
+    @Inject
+    lateinit var bookRepository: com.example.pdfreader.domain.repository.BookRepository
+
     private var backgroundTimestamp: Long = 0L
     private val lockTimeoutMs = 3 * 60 * 1000L // 3 minutes
     private val isAppLocked = mutableStateOf(false)
@@ -85,6 +88,33 @@ class MainActivity : FragmentActivity() {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        lifecycleScope.launch {
+            try {
+                bookRepository.cleanupOrphanedFiles()
+            } catch (_: Exception) {}
+        }
+
+        // Schedule FTS background indexing worker
+        try {
+            val constraints = androidx.work.Constraints.Builder()
+                .setRequiresCharging(true)
+                .setRequiresDeviceIdle(true)
+                .build()
+            val periodicRequest = androidx.work.PeriodicWorkRequestBuilder<com.example.pdfreader.data.service.FtsIndexingWorker>(
+                1, java.util.concurrent.TimeUnit.DAYS
+            )
+                .setConstraints(constraints)
+                .build()
+            androidx.work.WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+                "fts_indexing_worker",
+                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                periodicRequest
+            )
+            // Trigger an immediate check-up on start
+            val immediateRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.pdfreader.data.service.FtsIndexingWorker>().build()
+            androidx.work.WorkManager.getInstance(applicationContext).enqueue(immediateRequest)
+        } catch (_: Exception) {}
 
         // Observe Lifecycle events for lock timeout
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
@@ -129,22 +159,35 @@ class MainActivity : FragmentActivity() {
             // Dismiss the starting window splash when compose is ready
             LaunchedEffect(Unit) {
                 keepSplashOnScreen = false
-                val lastBookId = try {
-                    userPreferences.lastOpenedBookId.first()
-                } catch (_: Exception) {
-                    -1L
-                }
-                startDestination = if (lastBookId > 0) {
-                    Screen.Reader.createRoute(lastBookId)
+                
+                val intent = this@MainActivity.intent
+                val isPdfAction = intent?.action == android.content.Intent.ACTION_VIEW && intent.type == "application/pdf"
+                val intentUriString = intent?.data?.toString()
+
+                if (isPdfAction && intentUriString != null) {
+                    startDestination = Screen.Reader.createRoute(-1L, intentUriString)
                 } else {
-                    Screen.Library.route
+                    val lastBookId = try {
+                        userPreferences.lastOpenedBookId.first()
+                    } catch (_: Exception) {
+                        -1L
+                    }
+                    startDestination = if (lastBookId > 0) {
+                        Screen.Reader.createRoute(lastBookId)
+                    } else {
+                        Screen.Library.route
+                    }
                 }
             }
 
-            // Root Warning logic
+            // Root Warning & Play Integrity logic
             LaunchedEffect(Unit) {
                 if (!BuildConfig.DEBUG && RootDetectionUtil.isDeviceRooted()) {
                     showRootWarning = true
+                }
+                // Async Play Integrity attestation
+                com.example.pdfreader.util.PlayIntegrityUtil.verifyDeviceIntegrity(applicationContext) { success, message ->
+                    timber.log.Timber.i("Play Integrity Status - Success: $success, Message: $message")
                 }
             }
 

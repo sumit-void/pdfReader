@@ -17,6 +17,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Crop
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -100,6 +105,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.pdfreader.domain.model.AppTheme
 import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.material3.IconButtonDefaults
+import com.example.pdfreader.presentation.theme.PaperbackTheme
+import androidx.compose.foundation.layout.widthIn
 
 @Composable
 fun ReaderScreen(
@@ -110,6 +121,7 @@ fun ReaderScreen(
     onNavigateToSettings: () -> Unit,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
+    BackHandler(onBack = onNavigateBack)
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
@@ -187,20 +199,22 @@ fun ReaderScreen(
                 }
             }
 
-            ReaderContent(
-                state = state,
-                viewModel = viewModel,
-                onPageChanged = { viewModel.goToPage(it) },
-                onToggleControls = { viewModel.toggleControls() },
-                onToggleBookmark = { viewModel.toggleBookmark() },
-                onBack = onNavigateBack,
-                onToc = { onNavigateToToc(state.book.id) },
-                onBookmarks = { onNavigateToBookmarks(state.book.id) },
-                onHighlights = { onNavigateToHighlights(state.book.id) },
-                onSettings = onNavigateToSettings,
-                onRenderPage = { page, callback -> viewModel.renderPageForPager(page, callback) },
-                onSetScreenWidth = { viewModel.setScreenWidth(it) }
-            )
+            PaperbackTheme(appTheme = state.theme, dynamicColor = true) {
+                ReaderContent(
+                    state = state,
+                    viewModel = viewModel,
+                    onPageChanged = { viewModel.goToPage(it) },
+                    onToggleControls = { viewModel.toggleControls() },
+                    onToggleBookmark = { viewModel.toggleBookmark() },
+                    onBack = onNavigateBack,
+                    onToc = { onNavigateToToc(state.book.id) },
+                    onBookmarks = { onNavigateToBookmarks(state.book.id) },
+                    onHighlights = { onNavigateToHighlights(state.book.id) },
+                    onSettings = onNavigateToSettings,
+                    onRenderPage = { page, callback -> viewModel.renderPageForPager(page, callback) },
+                    onSetScreenWidth = { viewModel.setScreenWidth(it) }
+                )
+            }
         }
     }
 }
@@ -222,6 +236,7 @@ private fun ReaderContent(
 ) {
     val scope = rememberCoroutineScope()
     var showSummarySheet by remember { mutableStateOf(false) }
+    var showChatSheet by remember { mutableStateOf(false) }
 
     val density = LocalDensity.current.density
     val hapticFeedback = LocalHapticFeedback.current
@@ -282,36 +297,113 @@ private fun ReaderContent(
                 onSetScreenWidth(size.width)
             }
     ) {
-        // PDF Pages Pager (using 3D CurlPageEffect)
-        CurlPageEffect(
-            currentPage = state.currentPage,
-            pageCount = state.totalPages,
-            onPageChanged = onPageChanged,
-            theme = state.theme,
-            pageTurnStyle = state.pageTurnStyle,
-            readingDirection = state.readingDirection,
-            zoomLevel = state.zoomLevel,
-            onZoomChanged = { viewModel.updateZoomLevel(it) },
-            onRenderPage = onRenderPage,
-            onTap = onToggleControls,
-            onLeftDoubleTap = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                if (state.readingDirection == com.example.pdfreader.domain.model.ReadingDirection.RTL) {
-                    viewModel.nextPage()
+        if (state.isReflowMode) {
+            val reflowFontFamily = when (state.reflowFontFamily) {
+                "Lora" -> FontFamily.Serif
+                "Merriweather" -> FontFamily.Serif
+                "Roboto" -> FontFamily.SansSerif
+                else -> FontFamily.Default
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { onToggleControls() }
+                        )
+                    }
+                    .padding(horizontal = 20.dp)
+                    .background(
+                        when (state.theme) {
+                            AppTheme.DARK -> Color(0xFF121212)
+                            AppTheme.AMOLED -> Color.Black
+                            AppTheme.SEPIA -> Color(0xFFF5ECD7)
+                            else -> Color.White
+                        }
+                    )
+            ) {
+                if (state.isExtractingReflow) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 } else {
-                    viewModel.previousPage()
+                    val scrollState = rememberScrollState()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .padding(top = 70.dp, bottom = 100.dp)
+                            .verticalScroll(scrollState)
+                    ) {
+                        Text(
+                            text = state.reflowText.ifBlank { "No text found on this page." },
+                            style = TextStyle(
+                                fontFamily = reflowFontFamily,
+                                fontSize = state.reflowFontSize.sp,
+                                lineHeight = (state.reflowFontSize * state.reflowLineSpacing).sp,
+                                letterSpacing = state.reflowLetterSpacing.sp,
+                                color = when (state.theme) {
+                                    AppTheme.DARK, AppTheme.AMOLED -> Color.White
+                                    AppTheme.SEPIA -> Color(0xFF4A3C2D)
+                                    AppTheme.E_INK -> Color.Black
+                                    else -> Color.Black
+                                }
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            TextButton(
+                                onClick = { viewModel.previousPage() },
+                                enabled = state.currentPage > 0
+                            ) {
+                                Text("< Previous Page")
+                            }
+                            TextButton(
+                                onClick = { viewModel.nextPage() },
+                                enabled = state.currentPage < state.totalPages - 1
+                            ) {
+                                Text("Next Page >")
+                            }
+                        }
+                    }
                 }
-            },
-            onRightDoubleTap = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                if (state.readingDirection == com.example.pdfreader.domain.model.ReadingDirection.RTL) {
-                    viewModel.previousPage()
-                } else {
-                    viewModel.nextPage()
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+            }
+        } else {
+            // PDF Pages Pager (using 3D CurlPageEffect)
+            CurlPageEffect(
+                currentPage = state.currentPage,
+                pageCount = state.totalPages,
+                onPageChanged = onPageChanged,
+                theme = state.theme,
+                pageTurnStyle = state.pageTurnStyle,
+                readingDirection = state.readingDirection,
+                zoomLevel = state.zoomLevel,
+                onZoomChanged = { viewModel.updateZoomLevel(it) },
+                onRenderPage = onRenderPage,
+                onTap = onToggleControls,
+                onLeftDoubleTap = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (state.readingDirection == com.example.pdfreader.domain.model.ReadingDirection.RTL) {
+                        viewModel.nextPage()
+                    } else {
+                        viewModel.previousPage()
+                    }
+                },
+                onRightDoubleTap = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (state.readingDirection == com.example.pdfreader.domain.model.ReadingDirection.RTL) {
+                        viewModel.previousPage()
+                    } else {
+                        viewModel.nextPage()
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         // Overlay Box for theme cross-fade
         if (progress < 1f && oldOverlayColor != Color.Transparent) {
@@ -388,6 +480,30 @@ private fun ReaderContent(
                     }
 
                     IconButton(
+                        onClick = { viewModel.toggleAutoCrop() },
+                        modifier = Modifier.semantics { contentDescription = "Auto Crop margins" }
+                    ) {
+                        Icon(
+                            Icons.Filled.Crop,
+                            contentDescription = "Auto Crop",
+                            tint = if (state.isAutoCropEnabled) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { viewModel.toggleReflowMode() },
+                        modifier = Modifier.semantics { contentDescription = "Text Reflow mode" }
+                    ) {
+                        Icon(
+                            Icons.Filled.TextFields,
+                            contentDescription = "Text Reflow",
+                            tint = if (state.isReflowMode) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    IconButton(
                         onClick = {
                             bookmarkTrigger++
                             onToggleBookmark()
@@ -438,6 +554,10 @@ private fun ReaderContent(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
+                    if (state.isReflowMode) {
+                        ReflowSettingsPanel(state = state, viewModel = viewModel)
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -502,6 +622,26 @@ private fun ReaderContent(
                         )
                     }
                 }
+            }
+        }
+
+        // AI Chat FAB
+        AnimatedVisibility(
+            visible = state.showControls,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 168.dp, end = 24.dp)
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    showChatSheet = true
+                },
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ) {
+                Icon(Icons.Filled.Chat, contentDescription = "Chat with Book")
             }
         }
 
@@ -593,6 +733,308 @@ private fun ReaderContent(
                         modifier = Modifier.align(Alignment.End)
                     ) {
                         Text("Dismiss")
+                    }
+                }
+            }
+        }
+
+        // ModalBottomSheet for Chat with Book
+        if (showChatSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showChatSheet = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                        .navigationBarsPadding()
+                ) {
+                    Text(
+                        text = "Chat with Book (AI RAG)",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (state.book.id == -1L) {
+                        // Warn and block transient documents
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Offline AI Chat is not available for external, transient PDF documents. Import this book into your Library to unlock full semantic indexing and local Q&A capabilities.",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        TextButton(
+                            onClick = { showChatSheet = false },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Dismiss")
+                        }
+                    } else {
+                        // Chat content
+                        var userQuestion by remember { mutableStateOf("") }
+                        val chatScrollState = rememberScrollState()
+
+                        // Auto-scroll to bottom of chat when new messages arrive
+                        LaunchedEffect(state.chatMessages.size) {
+                            chatScrollState.animateScrollTo(chatScrollState.maxValue)
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 200.dp, max = 350.dp)
+                                .verticalScroll(chatScrollState)
+                                .weight(1f, fill = false)
+                        ) {
+                            if (state.chatMessages.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Ask any deep questions about this book! I will search through its pages and give you contextual answers.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 24.dp)
+                                    )
+                                }
+                            } else {
+                                state.chatMessages.forEach { chatMsg ->
+                                    val isAi = chatMsg.sender == "ai"
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 6.dp),
+                                        horizontalArrangement = if (isAi) Arrangement.Start else Arrangement.End
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(
+                                                topStart = 16.dp,
+                                                topEnd = 16.dp,
+                                                bottomStart = if (isAi) 4.dp else 16.dp,
+                                                bottomEnd = if (isAi) 16.dp else 4.dp
+                                            ),
+                                            color = if (isAi) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primaryContainer,
+                                            border = if (isAi) androidx.compose.foundation.BorderStroke(
+                                                1.dp,
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                            ) else null,
+                                            modifier = Modifier.widthIn(max = 280.dp)
+                                        ) {
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                Text(
+                                                    text = chatMsg.message,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = if (isAi) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimaryContainer
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (state.isAskingQuestion && state.chatMessages.lastOrNull()?.sender != "ai") {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Searching index and generating response...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            if (state.questionError != null) {
+                                Text(
+                                    text = state.questionError,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Question Input Bar
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(24.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = userQuestion,
+                                onValueChange = { userQuestion = it },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                textStyle = TextStyle(
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 15.sp
+                                ),
+                                decorationBox = { innerTextField ->
+                                    if (userQuestion.isEmpty()) {
+                                        Text(
+                                            text = "Ask a question about this book...",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+
+                            IconButton(
+                                onClick = {
+                                    if (userQuestion.isNotBlank() && !state.isAskingQuestion) {
+                                        viewModel.askBookQuestion(userQuestion)
+                                        userQuestion = ""
+                                    }
+                                },
+                                enabled = userQuestion.isNotBlank() && !state.isAskingQuestion,
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                )
+                            ) {
+                                Icon(
+                                    Icons.Filled.Send,
+                                    contentDescription = "Send",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReflowSettingsPanel(
+    state: ReaderUiState.Success,
+    viewModel: ReaderViewModel
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Text(
+            text = "Reflow Settings",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Font Size Adjustment
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = {
+                        val newSize = (state.reflowFontSize - 2f).coerceAtLeast(12f)
+                        viewModel.updateReflowSettings(
+                            fontSize = newSize,
+                            lineSpacing = state.reflowLineSpacing,
+                            letterSpacing = state.reflowLetterSpacing,
+                            fontFamily = state.reflowFontFamily
+                        )
+                    }
+                ) {
+                    Text(
+                        "A-",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                
+                Text(
+                    text = "${state.reflowFontSize.toInt()} sp",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+                
+                IconButton(
+                    onClick = {
+                        val newSize = (state.reflowFontSize + 2f).coerceAtMost(36f)
+                        viewModel.updateReflowSettings(
+                            fontSize = newSize,
+                            lineSpacing = state.reflowLineSpacing,
+                            letterSpacing = state.reflowLetterSpacing,
+                            fontFamily = state.reflowFontFamily
+                        )
+                    }
+                ) {
+                    Text(
+                        "A+",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
+            // Font Family Selection Chips
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Lora", "Merriweather", "Roboto").forEach { font ->
+                    val isSelected = state.reflowFontFamily == font
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        onClick = {
+                            viewModel.updateReflowSettings(
+                                fontSize = state.reflowFontSize,
+                                lineSpacing = state.reflowLineSpacing,
+                                letterSpacing = state.reflowLetterSpacing,
+                                fontFamily = font
+                            )
+                        },
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = font,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

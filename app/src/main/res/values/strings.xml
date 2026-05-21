@@ -70,6 +70,7 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_theme_sepia">Sepia</string>
     <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_e_ink">E-Ink High Contrast</string>
     <string name="settings_font_size">Font Size</string>
     <string name="settings_page_turn">Page Turn Style</string>
     <string name="settings_page_curl">Curl</string>
