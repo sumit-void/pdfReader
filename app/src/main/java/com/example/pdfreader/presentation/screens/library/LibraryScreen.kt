@@ -670,6 +670,7 @@ private fun BookGridCard(
             }
         }
     }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
