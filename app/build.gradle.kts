@@ -85,11 +85,15 @@ dependencies {
     implementation(libs.compose.runtime)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
+    implementation("androidx.compose.ui:ui-text-google-fonts")
 
     // Core
     implementation(libs.core.ktx)
     implementation(libs.core.splashscreen)
     implementation(libs.activity.compose)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.sqlcipher)
 
     // Lifecycle
     implementation(libs.lifecycle.runtime.compose)

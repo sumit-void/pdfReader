@@ -31,6 +31,8 @@ class UserPreferences @Inject constructor(
         val IS_FIRST_LAUNCH = booleanPreferencesKey("is_first_launch")
         val LIBRARY_VIEW_MODE = stringPreferencesKey("library_view_mode")
         val LIBRARY_SORT_MODE = stringPreferencesKey("library_sort_mode")
+        val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
+        val BLOCK_SCREENSHOTS = booleanPreferencesKey("block_screenshots")
     }
 
     private val dataStore = context.dataStore
@@ -80,6 +82,18 @@ class UserPreferences @Inject constructor(
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { prefs -> prefs[Keys.LIBRARY_SORT_MODE] ?: "RECENT" }
 
+    val appLockEnabled: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { prefs -> prefs[Keys.APP_LOCK_ENABLED] ?: false }
+
+    val blockScreenshots: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { prefs -> prefs[Keys.BLOCK_SCREENSHOTS] ?: true }
+
+    fun getBookZoomLevel(bookId: Long): Flow<Float> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { prefs -> prefs[floatPreferencesKey("zoom_level_$bookId")] ?: 1f }
+
     suspend fun setTheme(theme: String) {
         dataStore.edit { prefs -> prefs[Keys.THEME] = theme }
     }
@@ -118,5 +132,17 @@ class UserPreferences @Inject constructor(
 
     suspend fun setLibrarySortMode(mode: String) {
         dataStore.edit { prefs -> prefs[Keys.LIBRARY_SORT_MODE] = mode }
+    }
+
+    suspend fun setAppLockEnabled(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[Keys.APP_LOCK_ENABLED] = enabled }
+    }
+
+    suspend fun setBlockScreenshots(blocked: Boolean) {
+        dataStore.edit { prefs -> prefs[Keys.BLOCK_SCREENSHOTS] = blocked }
+    }
+
+    suspend fun setBookZoomLevel(bookId: Long, zoom: Float) {
+        dataStore.edit { prefs -> prefs[floatPreferencesKey("zoom_level_$bookId")] = zoom }
     }
 }

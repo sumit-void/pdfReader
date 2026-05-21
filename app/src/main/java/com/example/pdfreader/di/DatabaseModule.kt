@@ -25,11 +25,16 @@ object DatabaseModule {
     fun provideDatabase(
         @ApplicationContext context: Context
     ): PaperbackDatabase {
+        net.sqlcipher.database.SQLiteDatabase.loadLibs(context)
+        val passphrase = com.example.pdfreader.util.SecurityKeyManager.getDatabaseKey(context)
+        val factory = net.sqlcipher.database.SupportFactory(passphrase)
+
         return Room.databaseBuilder(
             context,
             PaperbackDatabase::class.java,
             PaperbackDatabase.DATABASE_NAME
         )
+            .openHelperFactory(factory)
             .addMigrations(PaperbackDatabase.MIGRATION_1_2)
             .build()
     }
