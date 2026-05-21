@@ -1,0 +1,49 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Left page background (soft rounded) -->
+    <path
+        android:fillColor="#FDFBF7"
+        android:strokeColor="#C8A96E"
+        android:strokeWidth="1"
+        android:pathData="M54,30 C45,30 35,32 26,35 C23,36 21,38 21,41 L21,74 C21,77 23,79 26,78 C35,75 45,74 54,74 Z" />
+        
+    <!-- Right page background (soft rounded with curl placeholder shape) -->
+    <path
+        android:fillColor="#FDFBF7"
+        android:strokeColor="#C8A96E"
+        android:strokeWidth="1"
+        android:pathData="M54,30 C63,30 73,32 82,35 C85,36 87,38 87,41 L87,70 C87,72 85,73 83,73 C78,73 75,76 75,81 L75,81 C75,76 65,74 54,74 Z" />
+
+    <!-- Right page curled corner fold effect -->
+    <path
+        android:fillColor="#EDE0CC"
+        android:strokeColor="#C8A96E"
+        android:strokeWidth="1.2"
+        android:pathData="M87,70 L75,81 C75,76 78,73 83,73 Z" />
+
+    <!-- Spine Accent (Warm gold accent line) -->
+    <path
+        android:strokeColor="#C8A96E"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M54,28 L54,76" />
+        
+    <!-- Soft lines on left page (text placeholder) -->
+    <path
+        android:strokeColor="#D5C5A8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M27,45 L47,45 M27,51 L47,51 M27,57 L47,57 M27,63 L47,63" />
+
+    <!-- Soft lines on right page (text placeholder) -->
+    <path
+        android:strokeColor="#D5C5A8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M61,45 L81,45 M61,51 L81,51 M61,57 L81,57 M61,63 L73,63" />
+
+</vector>

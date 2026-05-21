@@ -62,4 +62,15 @@
     <!-- Splash screen -->
     <color name="splash_background">#FF6B4E3D</color>
     <color name="accent_gold">#FFE0A96D</color>
+    <color name="launcher_background">#FFF5ECD7</color>
+
+    <!-- About / Developer Card -->
+    <color name="about_gradient_start">#FFC8A96E</color>
+    <color name="about_gradient_end">#FF8B6F5E</color>
+    <color name="about_avatar_start">#FFC8A96E</color>
+    <color name="about_avatar_end">#FF6B4E3D</color>
+    <color name="about_initials_gold">#FFC8A96E</color>
+
+    <!-- Shimmer -->
+    <color name="shimmer_highlight">#33FFFFFF</color>
 </resources>

@@ -22,7 +22,9 @@ data class SettingsUiState(
     val pageTurnStyle: PageTurnStyle = PageTurnStyle.CURL,
     val readingDirection: ReadingDirection = ReadingDirection.LTR,
     val brightness: Float = -1f,
-    val keepScreenAwake: Boolean = false
+    val keepScreenAwake: Boolean = false,
+    val appLockEnabled: Boolean = false,
+    val blockScreenshots: Boolean = true
 )
 
 @HiltViewModel
@@ -69,6 +71,16 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(keepScreenAwake = awake) }
             }
         }
+        viewModelScope.launch {
+            userPreferences.appLockEnabled.collectLatest { enabled ->
+                _uiState.update { it.copy(appLockEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.blockScreenshots.collectLatest { blocked ->
+                _uiState.update { it.copy(blockScreenshots = blocked) }
+            }
+        }
     }
 
     fun setTheme(theme: AppTheme) {
@@ -93,6 +105,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setKeepScreenAwake(awake: Boolean) {
         viewModelScope.launch { userPreferences.setKeepScreenAwake(awake) }
+    }
+
+    fun setAppLockEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferences.setAppLockEnabled(enabled) }
+    }
+
+    fun setBlockScreenshots(blocked: Boolean) {
+        viewModelScope.launch { userPreferences.setBlockScreenshots(blocked) }
     }
 
     fun clearHistory() {

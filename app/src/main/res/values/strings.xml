@@ -117,4 +117,21 @@
     <string name="error_generic">Something went wrong. Please try again.</string>
     <string name="importing_pdf">Importing PDF…</string>
     <string name="processing_pdf">Processing…</string>
+
+    <!-- Security Settings -->
+    <string name="settings_security">Security</string>
+    <string name="settings_app_lock">App Lock</string>
+    <string name="settings_app_lock_desc">Require biometric authentication to open the app</string>
+    <string name="settings_block_screenshots">Block Screenshots</string>
+    <string name="settings_block_screenshots_desc">Prevent screenshots and screen recording</string>
+
+    <!-- About / Developer Card -->
+    <string name="about_developer_name">Sumit Kumar</string>
+    <string name="about_developer_tagline">Android Developer · Building ideas into apps</string>
+    <string name="about_built_with_love">Built with ❤️ by Sumit Kumar</string>
+    <string name="about_linkedin_label">🔗 LinkedIn</string>
+    <string name="about_github_label">⌥ GitHub</string>
+    <string name="about_linkedin_url">https://www.linkedin.com/in/sumittkumar911/</string>
+    <string name="about_github_url">https://github.com/sumit-void</string>
+    <string name="about_version_format">Paperback v%1$s</string>
 </resources>
