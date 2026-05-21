@@ -1,0 +1,136 @@
+package com.example.pdfreader.presentation.theme
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import com.example.pdfreader.domain.model.AppTheme
+
+private val LightColorScheme = lightColorScheme(
+    primary = PrimaryLight,
+    onPrimary = OnPrimaryLight,
+    primaryContainer = PrimaryContainerLight,
+    onPrimaryContainer = OnPrimaryContainerLight,
+    secondary = SecondaryLight,
+    onSecondary = OnSecondaryLight,
+    secondaryContainer = SecondaryContainerLight,
+    onSecondaryContainer = OnSecondaryContainerLight,
+    tertiary = TertiaryLight,
+    onTertiary = OnTertiaryLight,
+    tertiaryContainer = TertiaryContainerLight,
+    onTertiaryContainer = OnTertiaryContainerLight,
+    background = BackgroundLight,
+    onBackground = OnBackgroundLight,
+    surface = SurfaceLight,
+    onSurface = OnSurfaceLight,
+    surfaceVariant = SurfaceVariantLight,
+    onSurfaceVariant = OnSurfaceVariantLight,
+    outline = OutlineLight,
+    error = ErrorColor,
+    onError = OnErrorColor,
+    errorContainer = ErrorContainerColor,
+    onErrorContainer = OnErrorContainerColor
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = PrimaryDark,
+    onPrimary = OnPrimaryDark,
+    primaryContainer = PrimaryContainerDark,
+    onPrimaryContainer = OnPrimaryContainerDark,
+    secondary = SecondaryDark,
+    onSecondary = OnSecondaryDark,
+    secondaryContainer = SecondaryContainerDark,
+    onSecondaryContainer = OnSecondaryContainerDark,
+    tertiary = TertiaryDark,
+    onTertiary = OnTertiaryDark,
+    tertiaryContainer = TertiaryContainerDark,
+    onTertiaryContainer = OnTertiaryContainerDark,
+    background = BackgroundDark,
+    onBackground = OnBackgroundDark,
+    surface = SurfaceDark,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = OnSurfaceVariantDark,
+    outline = OutlineDark,
+    error = ErrorColor,
+    onError = OnErrorColor,
+    errorContainer = ErrorContainerColor,
+    onErrorContainer = OnErrorContainerColor
+)
+
+private val SepiaColorScheme = lightColorScheme(
+    primary = PrimaryLight,
+    onPrimary = OnPrimaryLight,
+    primaryContainer = PrimaryContainerLight,
+    onPrimaryContainer = OnPrimaryContainerLight,
+    secondary = SecondaryLight,
+    onSecondary = OnSecondaryLight,
+    secondaryContainer = Color(0xFFE0D4B8),
+    onSecondaryContainer = OnSecondaryContainerLight,
+    tertiary = TertiaryLight,
+    onTertiary = OnTertiaryLight,
+    tertiaryContainer = TertiaryContainerLight,
+    onTertiaryContainer = OnTertiaryContainerLight,
+    background = BackgroundSepia,
+    onBackground = OnBackgroundSepia,
+    surface = SurfaceSepia,
+    onSurface = OnSurfaceSepia,
+    surfaceVariant = Color(0xFFE8DCC4),
+    onSurfaceVariant = Color(0xFF4A3C2D),
+    outline = Color(0xFF8A7A68),
+    error = ErrorColor,
+    onError = OnErrorColor,
+    errorContainer = ErrorContainerColor,
+    onErrorContainer = OnErrorContainerColor
+)
+
+private val AmoledColorScheme = darkColorScheme(
+    primary = PrimaryDark,
+    onPrimary = OnPrimaryDark,
+    primaryContainer = PrimaryContainerDark,
+    onPrimaryContainer = OnPrimaryContainerDark,
+    secondary = SecondaryDark,
+    onSecondary = OnSecondaryDark,
+    secondaryContainer = Color(0xFF2A2420),
+    onSecondaryContainer = OnSecondaryContainerDark,
+    tertiary = TertiaryDark,
+    onTertiary = OnTertiaryDark,
+    tertiaryContainer = TertiaryContainerDark,
+    onTertiaryContainer = OnTertiaryContainerDark,
+    background = BackgroundAmoled,
+    onBackground = OnBackgroundAmoled,
+    surface = SurfaceAmoled,
+    onSurface = OnSurfaceAmoled,
+    surfaceVariant = Color(0xFF1A1A1A),
+    onSurfaceVariant = Color(0xFFBDB3A4),
+    outline = Color(0xFF6E655A),
+    error = ErrorColor,
+    onError = OnErrorColor,
+    errorContainer = ErrorContainerColor,
+    onErrorContainer = OnErrorContainerColor
+)
+
+/**
+ * Main theme composable for the Paperback app.
+ * Supports Light, Dark, Sepia, and AMOLED themes.
+ */
+@Composable
+fun PaperbackTheme(
+    appTheme: AppTheme = AppTheme.LIGHT,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = when (appTheme) {
+        AppTheme.LIGHT -> LightColorScheme
+        AppTheme.DARK -> DarkColorScheme
+        AppTheme.SEPIA -> SepiaColorScheme
+        AppTheme.AMOLED -> AmoledColorScheme
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = PaperbackTypography,
+        content = content
+    )
+}
