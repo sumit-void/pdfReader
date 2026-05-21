@@ -60,9 +60,9 @@ class PdfRenderCache @Inject constructor() {
         }
     }
 
-    suspend fun renderPage(pageIndex: Int, screenWidth: Int): Bitmap? = withContext(Dispatchers.IO) {
+    suspend fun renderPage(pageIndex: Int, screenWidth: Int, theme: com.example.pdfreader.domain.model.AppTheme): Bitmap? = withContext(Dispatchers.IO) {
         renderMutex.withLock {
-            val cacheKey = "${currentFilePath}_${pageIndex}_${screenWidth}"
+            val cacheKey = "${currentFilePath}_${pageIndex}_${screenWidth}_${theme.name}"
             memoryCache.get(cacheKey)?.let { cached ->
                 if (!cached.isRecycled) return@withContext cached
             }
@@ -80,8 +80,23 @@ class PdfRenderCache @Inject constructor() {
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 page.close()
 
-                memoryCache.put(cacheKey, bitmap)
-                bitmap
+                // Apply theme color matrix filter
+                val matrix = com.example.pdfreader.util.PageColorFilter.getColorMatrix(theme)
+                val finalBitmap = if (matrix != null) {
+                    val filteredBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(filteredBitmap)
+                    val paint = android.graphics.Paint().apply {
+                        colorFilter = android.graphics.ColorMatrixColorFilter(matrix)
+                    }
+                    canvas.drawBitmap(bitmap, 0f, 0f, paint)
+                    bitmap.recycle()
+                    filteredBitmap
+                } else {
+                    bitmap
+                }
+
+                memoryCache.put(cacheKey, finalBitmap)
+                finalBitmap
             } catch (e: Exception) {
                 Timber.e(e, "Failed to render page $pageIndex")
                 null

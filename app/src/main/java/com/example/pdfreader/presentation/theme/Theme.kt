@@ -1,11 +1,25 @@
 package com.example.pdfreader.presentation.theme
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Indication
+import androidx.compose.foundation.IndicationInstance
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.ripple
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.scale
 import com.example.pdfreader.domain.model.AppTheme
 
 private val LightColorScheme = lightColorScheme(
@@ -112,6 +126,40 @@ private val AmoledColorScheme = darkColorScheme(
     onErrorContainer = OnErrorContainerColor
 )
 
+private object ScaleIndication : Indication {
+    @Composable
+    override fun rememberUpdatedInstance(interactionSource: InteractionSource): IndicationInstance {
+        val isPressed by interactionSource.collectIsPressedAsState()
+        val scaleState = animateFloatAsState(
+            targetValue = if (isPressed) 0.95f else 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "PressedScale"
+        )
+        val rippleIndication = ripple()
+        val rippleInstance = rippleIndication.rememberUpdatedInstance(interactionSource)
+        return remember(interactionSource) {
+            ScaleIndicationInstance(scaleState, rippleInstance)
+        }
+    }
+
+    private class ScaleIndicationInstance(
+        private val scaleState: State<Float>,
+        private val rippleInstance: IndicationInstance
+    ) : IndicationInstance {
+        override fun ContentDrawScope.draw() {
+            scale(scaleState.value, scaleState.value) {
+                this@draw.drawContent()
+                with(rippleInstance) {
+                    draw()
+                }
+            }
+        }
+    }
+}
+
 /**
  * Main theme composable for the Paperback app.
  * Supports Light, Dark, Sepia, and AMOLED themes.
@@ -128,9 +176,13 @@ fun PaperbackTheme(
         AppTheme.AMOLED -> AmoledColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = PaperbackTypography,
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalIndication provides ScaleIndication
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = PaperbackTypography,
+            content = content
+        )
+    }
 }
