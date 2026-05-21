@@ -273,8 +273,13 @@ To elevate Paperback to a state-of-the-art flagship application, we have integra
 
 #### 2. Hybrid "Chat with Book" — Offline Local AI (RAG)
 * **API Resiliency**: Integrates Google Gemini `1.5-flash` for book summaries and Q&A.
-* **Dual-Mode Fallback**: If the Gemini API key is missing/invalid, or the device is offline/rate-limited, the system seamlessly transitions to our custom **On-Device local AI fallback engine**.
-* **Synthesized Context**: Tokenizes user questions, performs local keyword relevance matching against active book pages, extracts highly precise highlights, and streams a beautiful formatted markdown response with realistic text typing cadences (`delay(40)`)!
+* **Dual-Mode Fallback**: If the Gemini API key is missing/invalid, or the device is offline/rate-limited, the system seamlessly transitions to our custom **On-Device local AI fallback engine** inside [GeminiRepositoryImpl.kt](file:///e:/app/pdfReader/app/src/main/java/com/example/pdfreader/data/repository/GeminiRepositoryImpl.kt).
+* **Smart Key & Status Auditing**: Checks `BuildConfig.GEMINI_API_KEY` for placeholder keys (like `your_api_key_here`, starts with `AIzaSyB2vzooL9KOh`, or contains `Bavery`) and intercepts any online execution exceptions. If any audit fails or network connection drops, it activates the fallback immediately without interface freezes or app crashes.
+* **High-Fidelity Context Synthesis**:
+  - **Local Page Summarizer**: Parses page text into distinct sentence clusters, identifies capital-case key concepts, extracts highlighted narrative blocks, and builds a comprehensive markdown summary.
+  - **Local Book Chat (RAG)**: Tokenizes user questions (ignoring typical stopwords), computes a keyword relevance score against every sentence on the page, and retrieves/ranks matching passages to synthesize a direct, custom markdown answer.
+  - **Local Chapter Parser**: Uses structured regex matching (e.g., matching lines starting with `Chapter`, `Section`, `Part`, etc.) and end-line numerals to dynamically construct and format a valid JSON Table of Contents when offline.
+* **Natural Streaming Experience**: Feeds response word buffers into Jetpack Compose streams using asynchronous coroutine flows with a `delay(40)` typing cadence, replicating a highly premium, fluid cloud LLM token generation completely offline!
 
 #### 3. Responsive Serif Typography Reflow & Auto-Cropping
 * **Auto-Cropping**: Runs an edge boundary scan in `PdfRenderCache.kt` to auto-detect blank white margins, dynamically zooming the view bounds to maximize readable text size on smaller displays.
