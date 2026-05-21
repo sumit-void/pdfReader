@@ -64,10 +64,7 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <service
-            android:name=".data.service.TtsService"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+
 
         <!-- Glance Widget Receiver -->
         <receiver

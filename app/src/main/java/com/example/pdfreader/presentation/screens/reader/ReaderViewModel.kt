@@ -12,6 +12,7 @@ import com.example.pdfreader.domain.model.PageTurnStyle
 import com.example.pdfreader.domain.repository.BookRepository
 import com.example.pdfreader.domain.repository.BookmarkRepository
 import com.example.pdfreader.domain.repository.ReadingStatsRepository
+import com.example.pdfreader.domain.model.ReadingDirection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,7 +30,7 @@ import javax.inject.Inject
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
-import com.example.pdfreader.data.service.TtsService
+
 import com.example.pdfreader.domain.usecase.SummarizePageUseCase
 import dagger.hilt.android.qualifiers.ApplicationContext
 
@@ -51,11 +52,9 @@ sealed class ReaderUiState {
         val isSummarizing: Boolean = false,
         val summaryText: String = "",
         val summaryError: String? = null,
-        val isTtsActive: Boolean = false,
-        val isTtsPlaying: Boolean = false,
-        val ttsWordRange: Pair<Int, Int>? = null,
         val pageText: String = "",
-        val zoomLevel: Float = 1f
+        val zoomLevel: Float = 1f,
+        val readingDirection: ReadingDirection = ReadingDirection.LTR
     ) : ReaderUiState()
 }
 
@@ -71,39 +70,7 @@ class ReaderViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    private var ttsService: TtsService? = null
-    private var isTtsBound = false
-    private var pendingTextToSpeak: String? = null
 
-    private val ttsConnection = object : android.content.ServiceConnection {
-        override fun onServiceConnected(name: android.content.ComponentName?, service: IBinder?) {
-            val binder = service as? TtsService.TtsBinder
-            ttsService = binder?.getService()
-            isTtsBound = true
-            
-            viewModelScope.launch {
-                ttsService?.isPlaying?.collectLatest { playing ->
-                    updateSuccessState { it.copy(isTtsPlaying = playing) }
-                }
-            }
-            viewModelScope.launch {
-                ttsService?.currentWordRange?.collectLatest { range ->
-                    updateSuccessState { it.copy(ttsWordRange = range) }
-                }
-            }
-
-            pendingTextToSpeak?.let { text ->
-                ttsService?.startSpeaking(text)
-                pendingTextToSpeak = null
-            }
-        }
-
-        override fun onServiceDisconnected(name: android.content.ComponentName?) {
-            ttsService = null
-            isTtsBound = false
-            updateSuccessState { it.copy(isTtsPlaying = false, ttsWordRange = null) }
-        }
-    }
 
     private val bookId: Long = savedStateHandle.get<Long>("bookId") ?: -1L
 
@@ -154,10 +121,17 @@ class ReaderViewModel @Inject constructor(
                 val currentPage = book.currentPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
                 startPage = currentPage
 
+                val initialZoom = try {
+                    userPreferences.getBookZoomLevel(bookId).first()
+                } catch (_: Exception) {
+                    1f
+                }
+
                 _uiState.value = ReaderUiState.Success(
                     book = book,
                     currentPage = currentPage,
-                    totalPages = pageCount
+                    totalPages = pageCount,
+                    zoomLevel = initialZoom
                 )
 
                 // Start reading session
@@ -205,8 +179,8 @@ class ReaderViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            userPreferences.getBookZoomLevel(bookId).collectLatest { zoom ->
-                updateSuccessState { it.copy(zoomLevel = zoom) }
+            userPreferences.readingDirection.collectLatest { dir ->
+                updateSuccessState { it.copy(readingDirection = try { ReadingDirection.valueOf(dir) } catch (_: Exception) { ReadingDirection.LTR }) }
             }
         }
     }
@@ -235,15 +209,10 @@ class ReaderViewModel @Inject constructor(
             val state = _uiState.value as? ReaderUiState.Success ?: return@launch
             val validPage = page.coerceIn(0, (state.totalPages - 1).coerceAtLeast(0))
 
-            if (state.isTtsActive) {
-                stopTts()
-            }
-
             updateSuccessState { 
                 it.copy(
                     currentPage = validPage,
                     pageText = "",
-                    ttsWordRange = null,
                     summaryText = "",
                     summaryError = null,
                     isSummarizing = false
@@ -317,13 +286,6 @@ class ReaderViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        if (isTtsBound) {
-            try {
-                context.unbindService(ttsConnection)
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to unbind TTS service in onCleared")
-            }
-        }
         viewModelScope.launch {
             try {
                 val state = _uiState.value as? ReaderUiState.Success
@@ -342,75 +304,13 @@ class ReaderViewModel @Inject constructor(
     }
 
     fun updateZoomLevel(zoom: Float) {
+        updateSuccessState { it.copy(zoomLevel = zoom) }
         viewModelScope.launch {
             userPreferences.setBookZoomLevel(bookId, zoom)
         }
     }
 
-    // TTS Control Methods
-    fun startTts() {
-        val state = _uiState.value as? ReaderUiState.Success ?: return
-        viewModelScope.launch {
-            val text = if (state.pageText.isBlank()) {
-                val extracted = try {
-                    bookRepository.extractPageText(state.book.filePath, state.currentPage)
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to extract text for TTS")
-                    ""
-                }
-                updateSuccessState { it.copy(pageText = extracted) }
-                extracted
-            } else {
-                state.pageText
-            }
 
-            if (text.isNotBlank()) {
-                val intent = Intent(context, TtsService::class.java)
-                context.startService(intent)
-                context.bindService(intent, ttsConnection, Context.BIND_AUTO_CREATE)
-                
-                updateSuccessState { it.copy(isTtsActive = true) }
-                
-                if (isTtsBound) {
-                    ttsService?.startSpeaking(text)
-                } else {
-                    pendingTextToSpeak = text
-                }
-            }
-        }
-    }
-
-    fun pauseTts() {
-        if (isTtsBound) {
-            ttsService?.pauseSpeaking()
-        }
-    }
-
-    fun resumeTts() {
-        if (isTtsBound) {
-            ttsService?.resumeSpeaking()
-        }
-    }
-
-    fun stopTts() {
-        if (isTtsBound) {
-            ttsService?.stopSpeaking()
-            try {
-                context.unbindService(ttsConnection)
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to unbind TTS service")
-            }
-            isTtsBound = false
-            ttsService = null
-        }
-        updateSuccessState { 
-            it.copy(
-                isTtsActive = false, 
-                isTtsPlaying = false, 
-                ttsWordRange = null 
-            ) 
-        }
-    }
 
     // Summarizer Methods
     fun summarizeCurrentPage() {

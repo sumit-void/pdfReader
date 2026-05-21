@@ -18,19 +18,21 @@ import javax.inject.Inject
 
 data class SettingsUiState(
     val theme: AppTheme = AppTheme.LIGHT,
-    val fontSize: Float = 16f,
     val pageTurnStyle: PageTurnStyle = PageTurnStyle.CURL,
     val readingDirection: ReadingDirection = ReadingDirection.LTR,
     val brightness: Float = -1f,
     val keepScreenAwake: Boolean = false,
     val appLockEnabled: Boolean = false,
-    val blockScreenshots: Boolean = true
+    val blockScreenshots: Boolean = true,
+    val dailyPagesGoal: Int = 10,
+    val dailyTimeGoal: Int = 15
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val userPreferences: UserPreferences,
-    private val readingStatsRepository: ReadingStatsRepository
+    private val readingStatsRepository: ReadingStatsRepository,
+    private val goalDao: com.example.pdfreader.data.local.dao.GoalDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -44,11 +46,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferences.theme.collectLatest { theme ->
                 _uiState.update { it.copy(theme = try { AppTheme.valueOf(theme) } catch (_: Exception) { AppTheme.LIGHT }) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.fontSize.collectLatest { size ->
-                _uiState.update { it.copy(fontSize = size) }
             }
         }
         viewModelScope.launch {
@@ -81,14 +78,21 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(blockScreenshots = blocked) }
             }
         }
+        viewModelScope.launch {
+            goalDao.observeGoal().collectLatest { goal ->
+                val resolvedGoal = goal ?: com.example.pdfreader.data.local.entity.GoalEntity()
+                _uiState.update {
+                    it.copy(
+                        dailyPagesGoal = resolvedGoal.dailyPagesGoal,
+                        dailyTimeGoal = resolvedGoal.dailyTimeGoalMinutes
+                    )
+                }
+            }
+        }
     }
 
     fun setTheme(theme: AppTheme) {
         viewModelScope.launch { userPreferences.setTheme(theme.name) }
-    }
-
-    fun setFontSize(size: Float) {
-        viewModelScope.launch { userPreferences.setFontSize(size) }
     }
 
     fun setPageTurnStyle(style: PageTurnStyle) {
@@ -113,6 +117,20 @@ class SettingsViewModel @Inject constructor(
 
     fun setBlockScreenshots(blocked: Boolean) {
         viewModelScope.launch { userPreferences.setBlockScreenshots(blocked) }
+    }
+
+    fun setDailyPagesGoal(pages: Int) {
+        viewModelScope.launch {
+            val currentGoal = goalDao.getGoal() ?: com.example.pdfreader.data.local.entity.GoalEntity()
+            goalDao.insertGoal(currentGoal.copy(dailyPagesGoal = pages))
+        }
+    }
+
+    fun setDailyTimeGoal(minutes: Int) {
+        viewModelScope.launch {
+            val currentGoal = goalDao.getGoal() ?: com.example.pdfreader.data.local.entity.GoalEntity()
+            goalDao.insertGoal(currentGoal.copy(dailyTimeGoalMinutes = minutes))
+        }
     }
 
     fun clearHistory() {

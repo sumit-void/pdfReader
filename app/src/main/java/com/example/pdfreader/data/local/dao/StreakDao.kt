@@ -16,6 +16,9 @@ interface StreakDao {
     @Query("SELECT * FROM streaks ORDER BY date DESC")
     fun getAllStreaks(): Flow<List<StreakEntity>>
 
+    @Query("SELECT * FROM streaks ORDER BY date DESC")
+    suspend fun getAllStreaksVal(): List<StreakEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStreak(streak: StreakEntity)
 

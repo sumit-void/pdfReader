@@ -60,6 +60,7 @@ import com.example.pdfreader.domain.model.AppTheme
 import com.example.pdfreader.presentation.navigation.PaperbackNavGraph
 import com.example.pdfreader.presentation.theme.PaperbackTheme
 import com.example.pdfreader.util.RootDetectionUtil
+import com.example.pdfreader.presentation.navigation.Screen
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -123,10 +124,21 @@ class MainActivity : FragmentActivity() {
 
             var showSplash by remember { mutableStateOf(true) }
             var showRootWarning by remember { mutableStateOf(false) }
+            var startDestination by remember { mutableStateOf<String?>(null) }
 
             // Dismiss the starting window splash when compose is ready
             LaunchedEffect(Unit) {
                 keepSplashOnScreen = false
+                val lastBookId = try {
+                    userPreferences.lastOpenedBookId.first()
+                } catch (_: Exception) {
+                    -1L
+                }
+                startDestination = if (lastBookId > 0) {
+                    Screen.Reader.createRoute(lastBookId)
+                } else {
+                    Screen.Library.route
+                }
             }
 
             // Root Warning logic
@@ -161,7 +173,10 @@ class MainActivity : FragmentActivity() {
                             }
                             else -> {
                                 val navController = rememberNavController()
-                                PaperbackNavGraph(navController = navController)
+                                PaperbackNavGraph(
+                                    navController = navController,
+                                    startDestination = startDestination ?: Screen.Library.route
+                                )
                             }
                         }
 

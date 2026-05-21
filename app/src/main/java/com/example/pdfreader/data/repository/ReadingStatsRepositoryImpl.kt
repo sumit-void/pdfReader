@@ -70,15 +70,40 @@ class ReadingStatsRepositoryImpl @Inject constructor(
         val totalPagesRead = sessionDao.getTotalPagesRead() ?: 0
         val totalReadingTimeMs = sessionDao.getTotalReadingTime() ?: 0
 
-        val calendar = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, -30)
+        val streaks = streakDao.getAllStreaksVal()
+        var streakDays = 0
+        if (streaks.isNotEmpty()) {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val todayStr = sdf.format(Date())
+            
+            val calendar = Calendar.getInstance()
+            val todayDate = sdf.parse(todayStr)
+            if (todayDate != null) {
+                calendar.time = todayDate
+                calendar.add(Calendar.DAY_OF_YEAR, -1)
+                val yesterdayStr = sdf.format(calendar.time)
+
+                val streakDates = streaks.map { it.date }.toSet()
+                val currentCheckStr = if (streakDates.contains(todayStr)) todayStr else if (streakDates.contains(yesterdayStr)) yesterdayStr else null
+
+                if (currentCheckStr != null) {
+                    val checkCal = Calendar.getInstance()
+                    val checkDate = sdf.parse(currentCheckStr)
+                    if (checkDate != null) {
+                        checkCal.time = checkDate
+                        while (streakDates.contains(sdf.format(checkCal.time))) {
+                            streakDays++
+                            checkCal.add(Calendar.DAY_OF_YEAR, -1)
+                        }
+                    }
+                }
+            }
         }
-        val readingStreak = sessionDao.getReadingDaysSince(calendar.timeInMillis)
 
         return ReadingStats(
             booksRead = booksRead,
             pagesRead = totalPagesRead,
-            readingStreakDays = readingStreak,
+            readingStreakDays = streakDays,
             totalReadingTimeMs = totalReadingTimeMs
         )
     }
@@ -86,15 +111,14 @@ class ReadingStatsRepositoryImpl @Inject constructor(
     override suspend fun getWeeklyActivity(): List<WeeklyActivity> {
         val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
         val activities = mutableListOf<WeeklyActivity>()
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
         for (i in 0 until 7) {
             val cal = Calendar.getInstance().apply {
                 add(Calendar.DAY_OF_YEAR, -(6 - i))
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
             }
+            val dateStr = sdf.format(cal.time)
+            val streak = streakDao.getStreakByDate(dateStr)
 
             val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
             val dayIndex = when (dayOfWeek) {
@@ -108,11 +132,14 @@ class ReadingStatsRepositoryImpl @Inject constructor(
                 else -> 0
             }
 
+            val timeMins = if (streak != null) (streak.timeReadMs / 60000).toInt() else 0
+            val pages = streak?.pagesRead ?: 0
+
             activities.add(
                 WeeklyActivity(
                     dayName = dayNames[dayIndex],
-                    readingTimeMinutes = 0,
-                    pagesRead = 0
+                    readingTimeMinutes = timeMins,
+                    pagesRead = pages
                 )
             )
         }

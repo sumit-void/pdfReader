@@ -19,13 +19,12 @@ import com.example.pdfreader.presentation.screens.library.LibraryScreen
 import com.example.pdfreader.presentation.screens.reader.ReaderScreen
 import com.example.pdfreader.presentation.screens.readingstats.ReadingStatsScreen
 import com.example.pdfreader.presentation.screens.settings.SettingsScreen
-import com.example.pdfreader.presentation.screens.splash.SplashScreen
 import com.example.pdfreader.presentation.screens.toc.TableOfContentsScreen
 
 @Composable
 fun PaperbackNavGraph(
     navController: NavHostController,
-    startDestination: String = Screen.Splash.route
+    startDestination: String = Screen.Library.route
 ) {
     NavHost(
         navController = navController,
@@ -43,21 +42,6 @@ fun PaperbackNavGraph(
             fadeOut(animationSpec = tween(220)) + slideOutHorizontally { it / 6 }
         }
     ) {
-        composable(Screen.Splash.route) {
-            SplashScreen(
-                onNavigateToLibrary = {
-                    navController.navigate(Screen.Library.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
-                    }
-                },
-                onNavigateToReader = { bookId ->
-                    navController.navigate(Screen.Reader.createRoute(bookId)) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
-                    }
-                }
-            )
-        }
-
         composable(Screen.Library.route) {
             LibraryScreen(
                 onBookClick = { bookId ->

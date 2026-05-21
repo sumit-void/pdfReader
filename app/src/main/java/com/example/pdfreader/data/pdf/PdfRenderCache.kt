@@ -80,20 +80,46 @@ class PdfRenderCache @Inject constructor() {
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 page.close()
 
-                // Apply theme color matrix filter
-                val matrix = com.example.pdfreader.util.PageColorFilter.getColorMatrix(theme)
-                val finalBitmap = if (matrix != null) {
-                    val filteredBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                    val canvas = android.graphics.Canvas(filteredBitmap)
-                    val paint = android.graphics.Paint().apply {
-                        colorFilter = android.graphics.ColorMatrixColorFilter(matrix)
+                // Apply theme-specific selective pixel filtering to preserve photos and illustrations
+                if (theme != com.example.pdfreader.domain.model.AppTheme.LIGHT) {
+                    val pixels = IntArray(width * height)
+                    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+                    for (i in pixels.indices) {
+                        val pixel = pixels[i]
+                        val a = (pixel shr 24) and 0xFF
+                        val r = (pixel shr 16) and 0xFF
+                        val g = (pixel shr 8) and 0xFF
+                        val b = pixel and 0xFF
+
+                        val maxVal = maxOf(r, maxOf(g, b))
+                        val minVal = minOf(r, minOf(g, b))
+                        if (maxVal - minVal <= 30) {
+                            val luminance = (r + g + b) / 3f
+                            val factor = luminance / 255f
+                            val (newR, newG, newB) = when (theme) {
+                                com.example.pdfreader.domain.model.AppTheme.SEPIA -> Triple(
+                                    (92 + (245 - 92) * factor).toInt().coerceIn(0, 255),
+                                    (61 + (236 - 61) * factor).toInt().coerceIn(0, 255),
+                                    (46 + (215 - 46) * factor).toInt().coerceIn(0, 255)
+                                )
+                                com.example.pdfreader.domain.model.AppTheme.DARK -> Triple(
+                                    (220 - 192 * factor).toInt().coerceIn(0, 255),
+                                    (220 - 192 * factor).toInt().coerceIn(0, 255),
+                                    (222 - 192 * factor).toInt().coerceIn(0, 255)
+                                )
+                                com.example.pdfreader.domain.model.AppTheme.AMOLED -> Triple(
+                                    (236 - 236 * factor).toInt().coerceIn(0, 255),
+                                    (236 - 236 * factor).toInt().coerceIn(0, 255),
+                                    (236 - 236 * factor).toInt().coerceIn(0, 255)
+                                )
+                                else -> Triple(r, g, b)
+                            }
+                            pixels[i] = (a shl 24) or (newR shl 16) or (newG shl 8) or newB
+                        }
                     }
-                    canvas.drawBitmap(bitmap, 0f, 0f, paint)
-                    bitmap.recycle()
-                    filteredBitmap
-                } else {
-                    bitmap
+                    bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
                 }
+                val finalBitmap = bitmap
 
                 memoryCache.put(cacheKey, finalBitmap)
                 finalBitmap

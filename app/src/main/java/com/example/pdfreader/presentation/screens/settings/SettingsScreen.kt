@@ -75,6 +75,8 @@ import com.example.pdfreader.domain.model.AppTheme
 import com.example.pdfreader.domain.model.PageTurnStyle
 import com.example.pdfreader.domain.model.ReadingDirection
 import kotlinx.coroutines.delay
+import coil.compose.SubcomposeAsyncImage
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,26 +156,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Font Size
-            ShimmerSettingsSection(title = stringResource(R.string.settings_font_size), isLoaded = isLoaded) {
-                Column {
-                    Text(
-                        text = "${uiState.fontSize.toInt()} sp",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Slider(
-                        value = uiState.fontSize,
-                        onValueChange = { viewModel.setFontSize(it) },
-                        valueRange = 12f..28f,
-                        steps = 7,
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                }
-            }
+
 
             // Page Turn Style
             ShimmerSettingsSection(title = stringResource(R.string.settings_page_turn), isLoaded = isLoaded) {
@@ -334,6 +317,74 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setBlockScreenshots(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Reading Goals Section
+            ShimmerSettingsSection(title = "Reading Goals", isLoaded = isLoaded) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Daily Pages Goal
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Daily Pages Goal",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${uiState.dailyPagesGoal} pages",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Slider(
+                            value = uiState.dailyPagesGoal.toFloat(),
+                            onValueChange = { viewModel.setDailyPagesGoal(it.toInt()) },
+                            valueRange = 1f..100f,
+                            steps = 98,
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+
+                    // Daily Time Goal
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Daily Time Goal",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${uiState.dailyTimeGoal} mins",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Slider(
+                            value = uiState.dailyTimeGoal.toFloat(),
+                            onValueChange = { viewModel.setDailyTimeGoal(it.toInt()) },
+                            valueRange = 5f..180f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
@@ -517,28 +568,59 @@ private fun DeveloperAboutCard() {
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Avatar circle with gradient + initials
-                Box(
+                // Avatar circle using Coil with gradient + initials fallback
+                SubcomposeAsyncImage(
+                    model = "https://github.com/sumit-void.png",
+                    contentDescription = "Developer Photo",
                     modifier = Modifier
                         .size(64.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFFC8A96E),
-                                    Color(0xFF6B4E3D)
-                                )
-                            ),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "SK",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFDFBF7) // Warm white
-                    )
-                }
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                    loading = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFFC8A96E),
+                                            Color(0xFF6B4E3D)
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "SK",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFDFBF7)
+                            )
+                        }
+                    },
+                    error = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFFC8A96E),
+                                            Color(0xFF6B4E3D)
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "SK",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFDFBF7)
+                            )
+                        }
+                    }
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 

@@ -4,7 +4,6 @@ package com.example.pdfreader.presentation.navigation
  * Defines all navigation routes in the Paperback app.
  */
 sealed class Screen(val route: String) {
-    data object Splash : Screen("splash")
     data object Library : Screen("library")
     data object Reader : Screen("reader/{bookId}") {
         fun createRoute(bookId: Long): String = "reader/$bookId"

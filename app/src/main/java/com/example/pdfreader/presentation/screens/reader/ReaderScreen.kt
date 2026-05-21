@@ -17,10 +17,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -292,17 +288,27 @@ private fun ReaderContent(
             pageCount = state.totalPages,
             onPageChanged = onPageChanged,
             theme = state.theme,
+            pageTurnStyle = state.pageTurnStyle,
+            readingDirection = state.readingDirection,
             zoomLevel = state.zoomLevel,
             onZoomChanged = { viewModel.updateZoomLevel(it) },
             onRenderPage = onRenderPage,
             onTap = onToggleControls,
             onLeftDoubleTap = {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                viewModel.previousPage()
+                if (state.readingDirection == com.example.pdfreader.domain.model.ReadingDirection.RTL) {
+                    viewModel.nextPage()
+                } else {
+                    viewModel.previousPage()
+                }
             },
             onRightDoubleTap = {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                viewModel.nextPage()
+                if (state.readingDirection == com.example.pdfreader.domain.model.ReadingDirection.RTL) {
+                    viewModel.previousPage()
+                } else {
+                    viewModel.nextPage()
+                }
             },
             modifier = Modifier.fillMaxSize()
         )
@@ -401,16 +407,7 @@ private fun ReaderContent(
                         )
                     }
 
-                    IconButton(
-                        onClick = { viewModel.startTts() },
-                        modifier = Modifier.semantics { contentDescription = "Read aloud" }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Read aloud",
-                            tint = if (state.isTtsActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+
 
                     IconButton(
                         onClick = onSettings,
@@ -424,7 +421,7 @@ private fun ReaderContent(
 
         // Bottom Control Bar
         AnimatedVisibility(
-            visible = state.showControls && !state.isTtsActive,
+            visible = state.showControls,
             enter = slideInVertically(animationSpec = tween(250), initialOffsetY = { it }) + fadeIn(animationSpec = tween(250)),
             exit = slideOutVertically(animationSpec = tween(250), targetOffsetY = { it }) + fadeOut(animationSpec = tween(250)),
             modifier = Modifier.align(Alignment.BottomCenter)
@@ -510,7 +507,7 @@ private fun ReaderContent(
 
         // Summarize FAB
         AnimatedVisibility(
-            visible = state.showControls && !state.isTtsActive,
+            visible = state.showControls,
             enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
             exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier
@@ -529,139 +526,7 @@ private fun ReaderContent(
             }
         }
 
-        // TTS Text Overlay
-        if (state.isTtsActive && state.pageText.isNotBlank()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 80.dp, bottom = 120.dp, start = 24.dp, end = 24.dp)
-                    .background(
-                        color = when (state.theme) {
-                            AppTheme.DARK -> Color(0xFF1E1E1E).copy(alpha = 0.95f)
-                            AppTheme.AMOLED -> Color.Black.copy(alpha = 0.95f)
-                            AppTheme.SEPIA -> Color(0xFFF4ECD8).copy(alpha = 0.95f)
-                            else -> Color.White.copy(alpha = 0.95f)
-                        },
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .padding(16.dp)
-            ) {
-                val annotatedString = remember(state.pageText, state.ttsWordRange) {
-                    buildAnnotatedString {
-                        append(state.pageText)
-                        state.ttsWordRange?.let { (start, end) ->
-                            if (start in 0..state.pageText.length && end in start..state.pageText.length) {
-                                addStyle(
-                                    style = SpanStyle(
-                                        background = Color.Yellow.copy(alpha = 0.5f),
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    start = start,
-                                    end = end
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Reading Aloud",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = when (state.theme) {
-                                AppTheme.DARK, AppTheme.AMOLED -> Color.White
-                                else -> Color.Black
-                            }
-                        )
-                        IconButton(onClick = { viewModel.stopTts() }) {
-                            Icon(
-                                imageVector = Icons.Filled.Stop,
-                                contentDescription = "Stop",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Box(modifier = Modifier.weight(1f)) {
-                        val scrollState = rememberScrollState()
-                        Text(
-                            text = annotatedString,
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                lineHeight = 28.sp,
-                                fontSize = 18.sp
-                            ),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(scrollState),
-                            color = when (state.theme) {
-                                AppTheme.DARK, AppTheme.AMOLED -> Color.White.copy(alpha = 0.9f)
-                                else -> Color.Black.copy(alpha = 0.9f)
-                            }
-                        )
-                    }
-                }
-            }
-        }
 
-        // TTS Playback Control Bar
-        AnimatedVisibility(
-            visible = state.isTtsActive,
-            enter = slideInVertically(initialOffsetY = { it }),
-            exit = slideOutVertically(targetOffsetY = { it }),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(16.dp)
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = {
-                            if (state.isTtsPlaying) {
-                                viewModel.pauseTts()
-                            } else {
-                                viewModel.resumeTts()
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (state.isTtsPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (state.isTtsPlaying) "Pause" else "Play",
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { viewModel.stopTts() }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Stop,
-                            contentDescription = "Stop",
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-        }
 
         // ModalBottomSheet for Gemini AI Summary
         if (showSummarySheet) {

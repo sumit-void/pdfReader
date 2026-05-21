@@ -5,8 +5,8 @@
         <pin-set>
             <!-- Primary Pin: GTS Root R1 -->
             <pin digest="SHA-256">hxr15Zi4M5Q46t659s+zQc6Z7c3HkW+nZzV0f2Y2Y2Y=</pin>
-            <!-- Backup Pin -->
-            <pin digest="SHA-256">YLh1dUR9y6KBA1WXrn9KOPc4JGcrLy41uK0eM0=</pin>
+            <!-- Backup Pin: GTS Root R1 Alternate -->
+            <pin digest="SHA-256">C5+lpZ7tc3z+otbuNnm5v9R12P7kF99v7+z33yZ/1lA=</pin>
         </pin-set>
     </domain-config>
 </network-security-config>

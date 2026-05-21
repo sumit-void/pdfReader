@@ -41,6 +41,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pdfreader.domain.model.AppTheme
+import com.example.pdfreader.domain.model.PageTurnStyle
+import com.example.pdfreader.domain.model.ReadingDirection
 import kotlinx.coroutines.launch
 
 @Composable
@@ -49,6 +51,8 @@ fun CurlPageEffect(
     pageCount: Int,
     onPageChanged: (Int) -> Unit,
     theme: AppTheme,
+    pageTurnStyle: PageTurnStyle,
+    readingDirection: ReadingDirection,
     zoomLevel: Float,
     onZoomChanged: (Float) -> Unit,
     onRenderPage: (Int, (Bitmap?) -> Unit) -> Unit,
@@ -88,7 +92,7 @@ fun CurlPageEffect(
         modifier = modifier
             .fillMaxSize()
             .onSizeChanged { width = it.width }
-            .pointerInput(currentPage, pageCount, currentScale) {
+            .pointerInput(currentPage, pageCount, currentScale, readingDirection) {
                 // Disable drag to turn page if zoomed in
                 if (currentScale > 1f) return@pointerInput
 
@@ -101,7 +105,8 @@ fun CurlPageEffect(
                     onHorizontalDrag = { change, dragAmount ->
                         change.consume()
                         if (width > 0) {
-                            offsetX += dragAmount
+                            val dragSign = if (readingDirection == ReadingDirection.RTL) -1f else 1f
+                            offsetX += dragAmount * dragSign
                             val progress = (-offsetX / width).coerceIn(-1f, 1f)
                             if (progress > 0 && currentPage < pageCount - 1) {
                                 dragDirection = -1
@@ -154,36 +159,45 @@ fun CurlPageEffect(
     ) {
         val progress = animProgress.value
 
-        // Underneath Page (renders flat)
+        // Underneath Page (renders flat or translated)
         if (dragDirection == -1 && currentPage < pageCount - 1) {
             // Turning forward: Underneath page is next page
+            val underneathModifier = if (pageTurnStyle == PageTurnStyle.SCROLL) {
+                Modifier.graphicsLayer {
+                    translationX = width * (1f - progress)
+                }
+            } else {
+                Modifier
+            }
             ZoomablePage(
                 bitmap = nextBmp,
                 pageIndex = currentPage + 1,
                 zoomLevel = 1f,
                 onZoomChanged = {},
-                onTap = onTap
+                onTap = onTap,
+                modifier = underneathModifier
             )
         } else if (dragDirection == 1 && currentPage > 0) {
             // Turning backward: Underneath page is current page
+            val underneathModifier = if (pageTurnStyle == PageTurnStyle.SCROLL) {
+                Modifier.graphicsLayer {
+                    translationX = width * progress
+                }
+            } else {
+                Modifier
+            }
             ZoomablePage(
                 bitmap = currentBmp,
                 pageIndex = currentPage,
                 zoomLevel = 1f,
                 onZoomChanged = {},
-                onTap = onTap
+                onTap = onTap,
+                modifier = underneathModifier
             )
         }
 
-        // Curling Page (renders with 3D rotation)
+        // Curling/Moving Page (renders with specified transition style)
         if (dragDirection != 0) {
-            val rotationY = if (dragDirection == -1) {
-                -180f * progress
-            } else {
-                180f * (1f - progress)
-            }
-
-            val isFlipped = kotlin.math.abs(rotationY) > 90f
             val curlingBmp = if (dragDirection == -1) currentBmp else prevBmp
             val curlingIndex = if (dragDirection == -1) currentPage else currentPage - 1
 
@@ -194,18 +208,50 @@ fun CurlPageEffect(
                 else -> Color(0xFFFFFFFF)
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        this.rotationY = rotationY
-                        this.cameraDistance = cameraDist
-                        this.transformOrigin = TransformOrigin(0f, 0.5f)
-                        this.translationX = -50f * (if (dragDirection == -1) progress else (1f - progress))
+            val movingModifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    when (pageTurnStyle) {
+                        PageTurnStyle.CURL -> {
+                            val rotationYVal = if (dragDirection == -1) {
+                                -180f * progress
+                            } else {
+                                180f * (1f - progress)
+                            }
+                            this.rotationY = rotationYVal
+                            this.cameraDistance = cameraDist
+                            this.transformOrigin = TransformOrigin(0f, 0.5f)
+                            this.translationX = -50f * (if (dragDirection == -1) progress else (1f - progress))
+                        }
+                        PageTurnStyle.SLIDE, PageTurnStyle.SCROLL -> {
+                            this.translationX = if (dragDirection == -1) {
+                                -width * progress
+                            } else {
+                                -width * (1f - progress)
+                            }
+                        }
+                        PageTurnStyle.FADE -> {
+                            this.alpha = if (dragDirection == -1) {
+                                1f - progress
+                            } else {
+                                progress
+                            }
+                        }
                     }
+                }
+
+            val isFlipped = if (pageTurnStyle == PageTurnStyle.CURL) {
+                val rot = if (dragDirection == -1) -180f * progress else 180f * (1f - progress)
+                kotlin.math.abs(rot) > 90f
+            } else {
+                false
+            }
+
+            Box(
+                modifier = movingModifier
             ) {
                 if (isFlipped) {
-                    // Back side of the curling page
+                    // Back side of the curling page (CURL only)
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -232,18 +278,21 @@ fun CurlPageEffect(
                         onZoomChanged = {},
                         onTap = onTap
                     )
-                    // Edge shadow on curling side (right edge)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(16.dp)
-                            .align(Alignment.CenterEnd)
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.15f))
+                    
+                    if (pageTurnStyle == PageTurnStyle.CURL) {
+                        // Edge shadow on curling side (right edge)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(16.dp)
+                                .align(Alignment.CenterEnd)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.15f))
+                                    )
                                 )
-                            )
-                    )
+                        )
+                    }
                 }
             }
         } else {
@@ -277,7 +326,7 @@ fun ZoomablePage(
 ) {
     var scale by remember(bitmap) { mutableFloatStateOf(zoomLevel) }
     var offset by remember(bitmap) { mutableStateOf(Offset.Zero) }
-    var width by remember { mutableStateOf(0) }
+    var containerSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
 
     LaunchedEffect(zoomLevel) {
         scale = zoomLevel
@@ -288,25 +337,38 @@ fun ZoomablePage(
         scale = newScale
         onZoomChanged(newScale)
         if (newScale > 1f) {
+            val maxOffsetX = if (containerSize.width > 0) (containerSize.width * (newScale - 1f) / 2f).coerceAtLeast(0f) else 0f
+            val maxOffsetY = if (containerSize.height > 0) (containerSize.height * (newScale - 1f) / 2f).coerceAtLeast(0f) else 0f
             offset = Offset(
-                x = offset.x + panChange.x,
-                y = offset.y + panChange.y
+                x = (offset.x + panChange.x).coerceIn(-maxOffsetX, maxOffsetX),
+                y = (offset.y + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
             )
         } else {
             offset = Offset.Zero
         }
     }
 
+    var pointerCount by remember { mutableStateOf(0) }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .onSizeChanged { width = it.width }
-            .pointerInput(bitmap, scale, width) {
+            .onSizeChanged { containerSize = it }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        pointerCount = event.changes.count { it.pressed }
+                    }
+                }
+            }
+            .pointerInput(bitmap, scale, containerSize) {
                 detectTapGestures(
                     onTap = { onTap() },
                     onDoubleTap = { pressOffset ->
-                        if (width > 0) {
-                            val ratio = pressOffset.x / width
+                        val w = containerSize.width
+                        if (w > 0) {
+                            val ratio = pressOffset.x / w
                             if (ratio < 0.2f) {
                                 onLeftDoubleTap()
                             } else if (ratio > 0.8f) {
@@ -326,7 +388,10 @@ fun ZoomablePage(
                     }
                 )
             }
-            .transformable(state = transformState)
+            .transformable(
+                state = transformState,
+                enabled = scale > 1f || pointerCount >= 2
+            )
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
