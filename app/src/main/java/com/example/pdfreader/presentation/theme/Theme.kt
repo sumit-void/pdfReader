@@ -9,8 +9,9 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.ripple
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -138,8 +139,7 @@ private object ScaleIndication : Indication {
             ),
             label = "PressedScale"
         )
-        val rippleIndication = ripple()
-        val rippleInstance = rippleIndication.rememberUpdatedInstance(interactionSource)
+        val rippleInstance = rememberRipple().rememberUpdatedInstance(interactionSource)
         return remember(interactionSource) {
             ScaleIndicationInstance(scaleState, rippleInstance)
         }
@@ -149,11 +149,11 @@ private object ScaleIndication : Indication {
         private val scaleState: State<Float>,
         private val rippleInstance: IndicationInstance
     ) : IndicationInstance {
-        override fun ContentDrawScope.draw() {
+        override fun ContentDrawScope.drawIndication() {
             scale(scaleState.value, scaleState.value) {
-                this@draw.drawContent()
+                this@drawIndication.drawContent()
                 with(rippleInstance) {
-                    draw()
+                    this@drawIndication.drawIndication()
                 }
             }
         }

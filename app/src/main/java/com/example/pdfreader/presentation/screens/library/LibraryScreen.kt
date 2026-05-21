@@ -131,23 +131,28 @@ fun LibraryScreen(
     }
 
     LaunchedEffect(gridState, listState, uiState.viewMode) {
-        val state = if (uiState.viewMode == LibraryViewMode.GRID) gridState else listState
-        var lastIndex = state.firstVisibleItemIndex
-        var lastOffset = state.firstVisibleItemScrollOffset
-        snapshotFlow { Pair(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset) }
-            .collect { (index, offset) ->
-                if (index > lastIndex) {
-                    isFabVisible = false
-                } else if (index < lastIndex) {
-                    isFabVisible = true
-                } else if (offset > lastOffset + 10) {
-                    isFabVisible = false
-                } else if (offset < lastOffset - 10) {
-                    isFabVisible = true
-                }
-                lastIndex = index
-                lastOffset = offset
+        val isGrid = uiState.viewMode == LibraryViewMode.GRID
+        var lastIndex = if (isGrid) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
+        var lastOffset = if (isGrid) gridState.firstVisibleItemScrollOffset else listState.firstVisibleItemScrollOffset
+        snapshotFlow {
+            if (isGrid) {
+                Pair(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset)
+            } else {
+                Pair(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
             }
+        }.collect { (index, offset) ->
+            if (index > lastIndex) {
+                isFabVisible = false
+            } else if (index < lastIndex) {
+                isFabVisible = true
+            } else if (offset > lastOffset + 10) {
+                isFabVisible = false
+            } else if (offset < lastOffset - 10) {
+                isFabVisible = true
+            }
+            lastIndex = index
+            lastOffset = offset
+        }
     }
 
     val pdfLauncher = rememberLauncherForActivityResult(
