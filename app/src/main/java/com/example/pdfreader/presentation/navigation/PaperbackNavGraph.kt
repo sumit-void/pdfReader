@@ -1,9 +1,10 @@
 package com.example.pdfreader.presentation.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -21,9 +22,6 @@ import com.example.pdfreader.presentation.screens.settings.SettingsScreen
 import com.example.pdfreader.presentation.screens.splash.SplashScreen
 import com.example.pdfreader.presentation.screens.toc.TableOfContentsScreen
 
-/**
- * Main navigation graph for the Paperback app.
- */
 @Composable
 fun PaperbackNavGraph(
     navController: NavHostController,
@@ -33,28 +31,16 @@ fun PaperbackNavGraph(
         navController = navController,
         startDestination = startDestination,
         enterTransition = {
-            fadeIn(animationSpec = tween(300)) + slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(300)
-            )
+            fadeIn(animationSpec = tween(280)) + slideInHorizontally { it / 6 }
         },
         exitTransition = {
-            fadeOut(animationSpec = tween(300)) + slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(300)
-            )
+            fadeOut(animationSpec = tween(200))
         },
         popEnterTransition = {
-            fadeIn(animationSpec = tween(300)) + slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(300)
-            )
+            fadeIn(animationSpec = tween(200))
         },
         popExitTransition = {
-            fadeOut(animationSpec = tween(300)) + slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(300)
-            )
+            fadeOut(animationSpec = tween(220)) + slideOutHorizontally { it / 6 }
         }
     ) {
         composable(Screen.Splash.route) {

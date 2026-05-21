@@ -43,8 +43,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.example.pdfreader.util.PageColorFilter
+import com.example.pdfreader.presentation.screens.reader.CurlPageEffect
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -216,21 +225,49 @@ private fun ReaderContent(
     onSetScreenWidth: (Int) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(
-        initialPage = state.currentPage,
-        pageCount = { state.totalPages }
-    )
     var showSummarySheet by remember { mutableStateOf(false) }
 
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.currentPage }.collect { page ->
-            onPageChanged(page)
+    val density = LocalDensity.current.density
+    val hapticFeedback = LocalHapticFeedback.current
+
+    // Bookmark tap scale bounce animation
+    var bookmarkTrigger by remember { mutableStateOf(0) }
+    val bookmarkScale by animateFloatAsState(
+        targetValue = if (bookmarkTrigger % 2 == 1) 1.3f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        finishedListener = {
+            if (bookmarkTrigger % 2 == 1) {
+                bookmarkTrigger++
+            }
+        },
+        label = "BookmarkScale"
+    )
+
+    // Theme-Aware Cross-Fade Animation
+    var lastTheme by remember { mutableStateOf(state.theme) }
+    val themeChangeProgress = remember { Animatable(1f) }
+
+    LaunchedEffect(state.theme) {
+        if (state.theme != lastTheme) {
+            themeChangeProgress.snapTo(0f)
+            themeChangeProgress.animateTo(1f, animationSpec = tween(400))
+            lastTheme = state.theme
         }
     }
 
+    val progress = themeChangeProgress.value
+    val oldOverlayColor = PageColorFilter.getOverlayColor(lastTheme)
+    val newOverlayColor = PageColorFilter.getOverlayColor(state.theme)
+
+    // Page count flip animation
+    var displayedPage by remember { mutableStateOf(state.currentPage) }
+    val rotationXAnim = remember { Animatable(0f) }
+
     LaunchedEffect(state.currentPage) {
-        if (pagerState.currentPage != state.currentPage) {
-            pagerState.scrollToPage(state.currentPage)
+        if (state.currentPage != displayedPage) {
+            rotationXAnim.animateTo(90f, animationSpec = tween(durationMillis = 120))
+            displayedPage = state.currentPage
+            rotationXAnim.animateTo(0f, animationSpec = tween(durationMillis = 120))
         }
     }
 
@@ -249,24 +286,48 @@ private fun ReaderContent(
                 onSetScreenWidth(size.width)
             }
     ) {
-        // PDF Pages Pager
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            beyondBoundsPageCount = 1
-        ) { pageIndex ->
-            PdfPage(
-                pageIndex = pageIndex,
-                onRenderPage = onRenderPage,
-                onTap = onToggleControls
+        // PDF Pages Pager (using 3D CurlPageEffect)
+        CurlPageEffect(
+            currentPage = state.currentPage,
+            pageCount = state.totalPages,
+            onPageChanged = onPageChanged,
+            theme = state.theme,
+            zoomLevel = state.zoomLevel,
+            onZoomChanged = { viewModel.updateZoomLevel(it) },
+            onRenderPage = onRenderPage,
+            onTap = onToggleControls,
+            onLeftDoubleTap = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.previousPage()
+            },
+            onRightDoubleTap = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.nextPage()
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Overlay Box for theme cross-fade
+        if (progress < 1f && oldOverlayColor != Color.Transparent) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(oldOverlayColor.copy(alpha = oldOverlayColor.alpha * (1f - progress)))
+            )
+        }
+        if (newOverlayColor != Color.Transparent) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(newOverlayColor.copy(alpha = newOverlayColor.alpha * progress))
             )
         }
 
         // Top Control Bar
         AnimatedVisibility(
             visible = state.showControls,
-            enter = slideInVertically(initialOffsetY = { -it }),
-            exit = slideOutVertically(targetOffsetY = { -it }),
+            enter = slideInVertically(animationSpec = tween(250), initialOffsetY = { -it }) + fadeIn(animationSpec = tween(250)),
+            exit = slideOutVertically(animationSpec = tween(250), targetOffsetY = { -it }) + fadeOut(animationSpec = tween(250)),
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             Surface(
@@ -321,7 +382,10 @@ private fun ReaderContent(
                     }
 
                     IconButton(
-                        onClick = onToggleBookmark,
+                        onClick = {
+                            bookmarkTrigger++
+                            onToggleBookmark()
+                        },
                         modifier = Modifier.semantics { contentDescription = "Bookmark page" }
                     ) {
                         Icon(
@@ -329,7 +393,11 @@ private fun ReaderContent(
                             else Icons.Filled.BookmarkBorder,
                             contentDescription = "Bookmark",
                             tint = if (state.isBookmarked) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = bookmarkScale
+                                scaleY = bookmarkScale
+                            }
                         )
                     }
 
@@ -357,8 +425,8 @@ private fun ReaderContent(
         // Bottom Control Bar
         AnimatedVisibility(
             visible = state.showControls && !state.isTtsActive,
-            enter = slideInVertically(initialOffsetY = { it }),
-            exit = slideOutVertically(targetOffsetY = { it }),
+            enter = slideInVertically(animationSpec = tween(250), initialOffsetY = { it }) + fadeIn(animationSpec = tween(250)),
+            exit = slideOutVertically(animationSpec = tween(250), targetOffsetY = { it }) + fadeOut(animationSpec = tween(250)),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             Surface(
@@ -378,11 +446,25 @@ private fun ReaderContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Page ${state.currentPage + 1} of ${state.totalPages}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        // Flip pill animation container
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    rotationX = rotationXAnim.value
+                                    cameraDistance = 12f * density
+                                }
+                                .animateContentSize()
+                        ) {
+                            Text(
+                                text = "${displayedPage + 1} / ${state.totalPages}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
 
                         Row {
                             IconButton(
@@ -412,9 +494,7 @@ private fun ReaderContent(
                         Slider(
                             value = state.currentPage.toFloat(),
                             onValueChange = { value ->
-                                scope.launch {
-                                    pagerState.scrollToPage(value.toInt())
-                                }
+                                onPageChanged(value.toInt())
                             },
                             valueRange = 0f..(state.totalPages - 1).toFloat(),
                             modifier = Modifier.fillMaxWidth(),
@@ -650,78 +730,6 @@ private fun ReaderContent(
                         Text("Dismiss")
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PdfPage(
-    pageIndex: Int,
-    onRenderPage: (Int, (Bitmap?) -> Unit) -> Unit,
-    onTap: () -> Unit
-) {
-    var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
-    var isLoading by remember(pageIndex) { mutableStateOf(true) }
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-
-    LaunchedEffect(pageIndex) {
-        isLoading = true
-        onRenderPage(pageIndex) { renderedBitmap ->
-            bitmap = renderedBitmap
-            isLoading = false
-        }
-    }
-
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        scale = (scale * zoomChange).coerceIn(1f, 5f)
-        if (scale > 1f) {
-            offset = Offset(
-                x = offset.x + panChange.x,
-                y = offset.y + panChange.y
-            )
-        } else {
-            offset = Offset.Zero
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { onTap() },
-                    onDoubleTap = {
-                        scale = 1f
-                        offset = Offset.Zero
-                    }
-                )
-            }
-            .transformable(state = transformState)
-            .graphicsLayer(
-                scaleX = scale,
-                scaleY = scale,
-                translationX = offset.x,
-                translationY = offset.y
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (isLoading || bitmap == null) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
-            )
-        }
-
-        bitmap?.let { bmp ->
-            if (!bmp.isRecycled) {
-                Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = "PDF page ${pageIndex + 1}",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
             }
         }
     }

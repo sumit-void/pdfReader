@@ -14,10 +14,12 @@ import com.example.pdfreader.domain.repository.BookmarkRepository
 import com.example.pdfreader.domain.repository.ReadingStatsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -52,7 +54,8 @@ sealed class ReaderUiState {
         val isTtsActive: Boolean = false,
         val isTtsPlaying: Boolean = false,
         val ttsWordRange: Pair<Int, Int>? = null,
-        val pageText: String = ""
+        val pageText: String = "",
+        val zoomLevel: Float = 1f
     ) : ReaderUiState()
 }
 
@@ -111,10 +114,24 @@ class ReaderViewModel @Inject constructor(
     private var startPage: Int = 0
     private var screenWidth: Int = 1080
 
+    private val progressSaveFlow = MutableSharedFlow<Int>()
+    private var lastSavedPage = 0
+
     init {
         loadBook()
         observePreferences()
         observeNavigationJumps()
+        
+        viewModelScope.launch {
+            progressSaveFlow
+                .debounce(500)
+                .collectLatest { page ->
+                    if (kotlin.math.abs(page - lastSavedPage) >= 3 || page == 0 || page == (uiState.value as? ReaderUiState.Success)?.totalPages?.minus(1)) {
+                        bookRepository.updateReadingProgress(bookId, page)
+                        lastSavedPage = page
+                    }
+                }
+        }
     }
 
     fun setScreenWidth(width: Int) {
@@ -149,6 +166,7 @@ class ReaderViewModel @Inject constructor(
                 // Update last opened
                 userPreferences.setLastOpenedBookId(bookId)
                 bookRepository.updateReadingProgress(bookId, currentPage)
+                lastSavedPage = currentPage
 
                 // Render current page
                 renderPage(currentPage)
@@ -184,6 +202,11 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferences.keepScreenAwake.collectLatest { awake ->
                 updateSuccessState { it.copy(keepScreenAwake = awake) }
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.getBookZoomLevel(bookId).collectLatest { zoom ->
+                updateSuccessState { it.copy(zoomLevel = zoom) }
             }
         }
     }
@@ -229,8 +252,8 @@ class ReaderViewModel @Inject constructor(
             renderPage(validPage)
             observeBookmark(validPage)
 
-            // Save progress
-            bookRepository.updateReadingProgress(bookId, validPage)
+            // Save progress via debounced flow
+            progressSaveFlow.emit(validPage)
         }
     }
 
@@ -265,7 +288,8 @@ class ReaderViewModel @Inject constructor(
 
     private suspend fun renderPage(pageIndex: Int) {
         try {
-            val bitmap = pdfRenderCache.renderPage(pageIndex, screenWidth)
+            val theme = (_uiState.value as? ReaderUiState.Success)?.theme ?: AppTheme.LIGHT
+            val bitmap = pdfRenderCache.renderPage(pageIndex, screenWidth, theme)
             updateSuccessState { it.copy(currentBitmap = bitmap) }
         } catch (e: Exception) {
             Timber.e(e, "Failed to render page $pageIndex")
@@ -275,7 +299,8 @@ class ReaderViewModel @Inject constructor(
     fun renderPageForPager(pageIndex: Int, callback: (Bitmap?) -> Unit) {
         viewModelScope.launch {
             try {
-                val bitmap = pdfRenderCache.renderPage(pageIndex, screenWidth)
+                val theme = (_uiState.value as? ReaderUiState.Success)?.theme ?: AppTheme.LIGHT
+                val bitmap = pdfRenderCache.renderPage(pageIndex, screenWidth, theme)
                 callback(bitmap)
             } catch (e: Exception) {
                 Timber.e(e, "Failed to render page $pageIndex for pager")
@@ -302,6 +327,9 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val state = _uiState.value as? ReaderUiState.Success
+                if (state != null) {
+                    bookRepository.updateReadingProgress(bookId, state.currentPage)
+                }
                 val pagesRead = ((state?.currentPage ?: 0) - startPage).coerceAtLeast(0)
                 if (sessionId > 0) {
                     readingStatsRepository.endSession(sessionId, pagesRead)
@@ -310,6 +338,12 @@ class ReaderViewModel @Inject constructor(
             } catch (e: Exception) {
                 Timber.e(e, "Error in onCleared")
             }
+        }
+    }
+
+    fun updateZoomLevel(zoom: Float) {
+        viewModelScope.launch {
+            userPreferences.setBookZoomLevel(bookId, zoom)
         }
     }
 
